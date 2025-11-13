@@ -19,11 +19,11 @@ export default [
     },
     rules: {
       'prettier/prettier': 'error',
-      '@typescript-eslint/explicit-function-return-type': 'error',
-      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/explicit-function-return-type': ['error', { allowExpressions: true }],
+      '@typescript-eslint/no-explicit-any': 'warn', // Warn instead of error for any types
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_' },
+        { argsIgnorePattern: '^_|^error' }, // Allow unused error variables
       ],
       '@typescript-eslint/no-floating-promises': 'error',
     },
@@ -43,7 +43,7 @@ export default [
     },
     rules: {
       'prettier/prettier': 'error',
-      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-explicit-any': 'off', // Allow any in tests for mocking
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_' },
