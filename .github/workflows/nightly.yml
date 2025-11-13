@@ -44,7 +44,10 @@ jobs:
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        continue-on-error: true
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           flags: e2e-${{ matrix.browser }}
           fail_ci_if_error: false
