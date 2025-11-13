@@ -160,9 +160,44 @@ npm test
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## Scientific Background
+
+This project builds on several key concepts from computer science and AI research:
+
+### Task Decomposition & Planning
+- **Hierarchical Task Networks (HTN)**: Nau, D., Au, T. C., Ilghami, O., Kuter, U., Murdock, J. W., Wu, D., & Yaman, F. (2003). SHOP2: An HTN planning system. *Journal of Artificial Intelligence Research*, 20, 379-404.
+- **Goal-Oriented Action Planning**: Orkin, J. (2006). Three States and a Plan: The AI of F.E.A.R. *Game Developers Conference*.
+
+### Directed Acyclic Graphs (DAG)
+- **Task Dependencies**: Cormen, T. H., Leiserson, C. E., Rivest, R. L., & Stein, C. (2009). *Introduction to Algorithms* (3rd ed.). MIT Press. Chapter 22: Elementary Graph Algorithms.
+- **Workflow Management**: van der Aalst, W. M. P. (1998). The Application of Petri Nets to Workflow Management. *Journal of Circuits, Systems, and Computers*, 8(01), 21-66.
+
+### LLM-Driven Program Synthesis
+- **Chain-of-Thought Prompting**: Wei, J., Wang, X., Schuurmans, D., Bosma, M., Chi, E., Le, Q., & Zhou, D. (2022). Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. *arXiv preprint arXiv:2201.11903*.
+- **Program Synthesis from Natural Language**: Gu, X., Zhang, H., & Kim, S. (2018). Deep Code Search. *Proceedings of the 40th International Conference on Software Engineering*, 933-944.
+
+### Test Automation & Verification
+- **Model-Based Testing**: Utting, M., & Legeard, B. (2007). *Practical Model-Based Testing: A Tools Approach*. Morgan Kaufmann.
+- **Property-Based Testing**: Claessen, K., & Hughes, J. (2000). QuickCheck: A Lightweight Tool for Random Testing of Haskell Programs. *ACM SIGPLAN Notices*, 35(9), 268-279.
+
+### Clean Architecture
+- **Layered Architecture**: Martin, R. C. (2017). *Clean Architecture: A Craftsman's Guide to Software Structure and Design*. Prentice Hall.
+- **Domain-Driven Design**: Evans, E. (2003). *Domain-Driven Design: Tackling Complexity in the Heart of Software*. Addison-Wesley.
+
+### Context Management & State Machines
+- **Finite State Machines**: Hopcroft, J. E., Motwani, R., & Ullman, J. D. (2006). *Introduction to Automata Theory, Languages, and Computation* (3rd ed.). Pearson.
+- **Session Management**: Fielding, R. T. (2000). *Architectural Styles and the Design of Network-based Software Architectures* (Doctoral dissertation). University of California, Irvine.
+
 ## License
 
-MIT
+This work is licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+
+You are free to:
+- **Share** — copy and redistribute the material in any medium or format
+- **Adapt** — remix, transform, and build upon the material for any purpose, even commercially
+
+Under the following terms:
+- **Attribution** — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
 
 ## Acknowledgments
 
@@ -171,3 +206,11 @@ Built with:
 - [OpenAI](https://openai.com/) - GPT models
 - [Anthropic](https://anthropic.com/) - Claude models
 - [Jest](https://jestjs.io/) - Testing framework
+
+### Research Foundations
+This project synthesizes concepts from:
+- Hierarchical Task Network planning
+- Directed Acyclic Graph theory
+- Large Language Model reasoning
+- Model-based testing methodologies
+- Clean Architecture principles

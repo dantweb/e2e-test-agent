@@ -28,8 +28,8 @@
     "automation",
     "llm"
   ],
-  "author": "",
-  "license": "MIT",
+  "author": "E2E Test Agent Contributors",
+  "license": "CC-BY-4.0",
   "engines": {
     "node": ">=20.0.0"
   },
