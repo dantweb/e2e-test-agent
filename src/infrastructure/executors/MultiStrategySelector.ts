@@ -21,16 +21,19 @@ export class MultiStrategySelector {
     const primaryLocator = this.getLocator(page, selector.strategy, selector.value);
 
     try {
-      await primaryLocator.waitFor({ timeout: 2000, state: 'attached' });
-      return primaryLocator;
+      // Use .first() to handle cases where multiple elements match
+      const firstLocator = primaryLocator.first();
+      await firstLocator.waitFor({ timeout: 2000, state: 'attached' });
+      return firstLocator;
     } catch (error) {
       // Try fallbacks
       if (selector.fallbacks && selector.fallbacks.length > 0) {
         for (const fallback of selector.fallbacks) {
           try {
             const fallbackLocator = this.getLocator(page, fallback.strategy, fallback.value);
-            await fallbackLocator.waitFor({ timeout: 2000, state: 'attached' });
-            return fallbackLocator;
+            const firstFallbackLocator = fallbackLocator.first();
+            await firstFallbackLocator.waitFor({ timeout: 2000, state: 'attached' });
+            return firstFallbackLocator;
           } catch {
             // Continue to next fallback
             continue;
