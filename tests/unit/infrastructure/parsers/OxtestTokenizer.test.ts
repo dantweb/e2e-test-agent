@@ -124,7 +124,7 @@ describe('OxtestTokenizer', () => {
       expect(tokens).toHaveLength(1);
       expect(tokens[0]).toEqual({
         type: 'COMMAND',
-        value: 'wait_navigation',
+        value: 'wait', // wait_navigation is normalized to 'wait'
       });
     });
 

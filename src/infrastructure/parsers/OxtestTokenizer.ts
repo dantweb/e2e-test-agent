@@ -53,8 +53,9 @@ export class OxtestTokenizer {
     const tokens: Token[] = [];
     const parts = this.splitLine(trimmed);
 
-    // First part is always the command
-    tokens.push({ type: 'COMMAND', value: parts[0] });
+    // First part is always the command (normalize snake_case to camelCase)
+    const commandName = this.normalizeCommandName(parts[0]);
+    tokens.push({ type: 'COMMAND', value: commandName });
 
     // Process remaining parts
     let i = 1;
@@ -195,5 +196,35 @@ export class OxtestTokenizer {
       key,
       value: valueParts.join('='), // Handle = in values
     };
+  }
+
+  /**
+   * Normalizes command names from snake_case to camelCase.
+   * Examples: assert_exists -> assertExists, wait_for -> waitForSelector
+   */
+  private normalizeCommandName(command: string): string {
+    // Map of snake_case to camelCase command names
+    const commandMap: Record<string, string> = {
+      'assert_exists': 'assertVisible', // assert_exists checks if visible
+      'assert_not_exists': 'assertHidden', // assert_not_exists checks if hidden
+      'assert_visible': 'assertVisible',
+      'assert_hidden': 'assertHidden',
+      'assert_text': 'assertText',
+      'assert_value': 'assertValue',
+      'assert_enabled': 'assertEnabled',
+      'assert_disabled': 'assertDisabled',
+      'assert_checked': 'assertChecked',
+      'assert_unchecked': 'assertUnchecked',
+      'assert_url': 'assertUrl',
+      'assert_title': 'assertTitle',
+      'wait_for': 'waitForSelector',
+      'wait_navigation': 'wait', // wait_navigation maps to wait
+      'go_back': 'goBack',
+      'go_forward': 'goForward',
+      'select_option': 'selectOption',
+      'set_viewport': 'setViewport',
+    };
+
+    return commandMap[command] || command;
   }
 }
