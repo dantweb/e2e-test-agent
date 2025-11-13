@@ -1,0 +1,179 @@
+@startuml Architecture Layers
+title e2e-tester-agent: Five-Layer Clean Architecture
+
+skinparam componentStyle rectangle
+skinparam backgroundColor white
+
+package "Layer 5: Presentation" <<Rectangle>> #F8BBD0 {
+  [CLI\n(compile, execute)] as CLI
+  [HTMLReporter] as HTMLRep
+  [JUnitReporter] as JUnitRep
+  [WebUI] as WebUI #LightGray
+  note right of WebUI : Future
+
+  CLI -down-> HTMLRep
+  CLI -down-> JUnitRep
+}
+
+package "Layer 4: Infrastructure" <<Rectangle>> #B3E5FC {
+  [PlaywrightExecutor] as PWExecutor
+  [OxtestParser] as QCParser
+  [MultiStrategySelector] as Selector
+  [OpenAILLMProvider] as OpenAI
+  [AnthropicLLMProvider] as Anthropic
+  [LocalLLMProvider] as Local #LightGray
+  [LLMProviderFactory] as LLMFactory
+  [MySQLDatabaseWatcher] as MySQL
+  [PostgreSQLDatabaseWatcher] as Postgres #LightGray
+
+  LLMFactory ..> OpenAI : creates
+  LLMFactory ..> Anthropic : creates
+  LLMFactory ..> Local : creates
+  PWExecutor -right-> Selector
+}
+
+package "Layer 3: Application" <<Rectangle>> #C5E1A5 {
+  [IterativeDecompositionEngine] as DecompEngine
+  [SequentialExecutionOrchestrator] as Orchestrator
+  [PredicateValidationEngine] as ValEngine
+  [ExecutionContext\n(Shared State)] as Context
+
+  Orchestrator -down-> Context
+  DecompEngine -down-> LLMFactory
+  ValEngine -down-> LLMFactory
+  Orchestrator -down-> PWExecutor
+  Orchestrator -down-> ValEngine
+}
+
+package "Layer 2: Domain" <<Rectangle>> #FFECB3 {
+  [Task\n(Domain Model)] as Task
+  [Subtask\n(Domain Model)] as Subtask
+  [OxtestCommand\n(Domain Model)] as QCCommand
+  [ValidationPredicate\n(Interface)] as ValPredicate
+  [SelectorSpec\n(Value Object)] as SelectorSpec
+  [ActionType\n(Enum)] as ActionType
+  [TaskStatus\n(Enum)] as TaskStatus
+
+  Task o-down- Subtask
+  Subtask o-down- ValPredicate
+  QCCommand o-down- SelectorSpec
+}
+
+package "Layer 1: Configuration" <<Rectangle>> #FFF9C4 {
+  [YamlConfigParser] as YAMLParser
+  [SchemaValidator] as SchemaVal
+  [EnvironmentResolver] as EnvResolver
+
+  YAMLParser -down-> SchemaVal
+  YAMLParser -down-> EnvResolver
+}
+
+' ===== Dependencies (Inner layers never depend on outer) =====
+
+' Presentation → Application
+CLI -down-> DecompEngine
+CLI -down-> Orchestrator
+CLI -down-> YAMLParser
+CLI -down-> QCParser
+
+' Application → Domain
+DecompEngine -down-> Task
+DecompEngine -down-> QCCommand
+Orchestrator -down-> QCCommand
+ValEngine -down-> ValPredicate
+
+' Infrastructure → Domain
+QCParser -down-> QCCommand
+QCParser -down-> SelectorSpec
+PWExecutor -down-> QCCommand
+PWExecutor -down-> SelectorSpec
+
+' Infrastructure used by Application
+' (via interfaces, dependency inversion)
+
+note as DependencyRule
+  **Dependency Rule:**
+  Dependencies point INWARD
+  • Outer layers depend on inner
+  • Inner layers never depend on outer
+  • Domain has no dependencies
+  • Infrastructure implements interfaces
+    defined in inner layers
+end note
+
+note bottom of Task
+  **Domain Layer:**
+  • Pure business logic
+  • No framework dependencies
+  • No external dependencies
+  • Defines interfaces
+  • Core models
+end note
+
+note bottom of DecompEngine
+  **Application Layer:**
+  • Use cases
+  • Orchestration
+  • Business rules
+  • Depends on domain
+  • Uses infrastructure via interfaces
+end note
+
+note bottom of PWExecutor
+  **Infrastructure Layer:**
+  • External integrations
+  • Playwright (browser)
+  • LLM APIs (OpenAI, Anthropic)
+  • Database connections
+  • File I/O (oxtest parsing)
+  • Implements domain interfaces
+end note
+
+note bottom of CLI
+  **Presentation Layer:**
+  • User interaction
+  • CLI commands
+  • Report generation
+  • Web UI (future)
+  • Orchestrates application services
+end note
+
+note bottom of YAMLParser
+  **Configuration Layer:**
+  • Input parsing
+  • Schema validation
+  • Environment resolution
+  • Entry point for data
+end note
+
+' ===== Data Flow Arrows =====
+
+note as DataFlow
+  **Data Flow:**
+  YAML → Config → Application → Infrastructure
+  .ox.test files → Parser → Executor → Browser
+end note
+
+DataFlow -[hidden]down-> YAMLParser
+
+' ===== Key Patterns =====
+
+note right of LLMFactory
+  **Factory Pattern:**
+  Creates LLM providers
+  based on configuration
+end note
+
+note right of Context
+  **Shared Context:**
+  Single session state
+  persists across commands
+end note
+
+note left of QCParser
+  **Oxtest:**
+  Human-readable
+  intermediate format
+end note
+
+@enduml

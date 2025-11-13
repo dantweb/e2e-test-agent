@@ -1,0 +1,224 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                          e2e-tester-agent Architecture                        ║
+║                  AI-Driven E2E Testing with Quasi-Code                        ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                           THE TWO-PHASE WORKFLOW                              │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+PHASE 1: COMPILATION (AI-Driven, Run Once)
+═══════════════════════════════════════════
+
+    User writes YAML
+    ┌──────────────────────────────────────────────┐
+    │ payment-flow:                                │
+    │   jobs:                                      │
+    │     - name: login                            │
+    │       prompt: Login with user/pass           │
+    │       acceptance: you see homepage           │
+    └──────────────────────────────────────────────┘
+                    ↓
+    $ npm run e2e-test-compile --src=test.yaml --output=_generated
+                    ↓
+    ┌──────────────────────────────────────────────┐
+    │  LLM Iterative Discovery Process             │
+    │  ──────────────────────────────────────      │
+    │  Loop:                                       │
+    │    1. Read HTML/DOM state                    │
+    │    2. Analyze: "What's needed next?"         │
+    │    3. Generate quasi-code command            │
+    │    4. Validate command                       │
+    │    5. Update state understanding             │
+    │    6. Check acceptance criteria              │
+    │  Until: Goal achieved                        │
+    └──────────────────────────────────────────────┘
+                    ↓
+    Generates Quasi-Code
+    ┌──────────────────────────────────────────────┐
+    │ # login-test.qc                              │
+    │ navigate url=https://myshop.com              │
+    │ type css=input[name="username"] value=${USER}│
+    │ type css=input[type="password"] value=${PASS}│
+    │ click text="Login" fallback=css=button[type="submit"]│
+    │ wait_navigation timeout=5000                 │
+    │ assert_url pattern=.*/home                   │
+    └──────────────────────────────────────────────┘
+                    ↓
+    Output: _generated/
+    ├── manifest.json
+    └── login-test.qc
+
+
+PHASE 2: EXECUTION (Deterministic, Run Many Times)
+═══════════════════════════════════════════════════
+
+    $ npm run e2e-test-run _generated
+                    ↓
+    ┌──────────────────────────────────────────────┐
+    │  Quasi-Code Parser                           │
+    │  Reads .qc files → Command objects           │
+    └──────────────────────────────────────────────┘
+                    ↓
+    ┌──────────────────────────────────────────────┐
+    │  Playwright Executor                         │
+    │  Executes commands → Browser actions         │
+    │  No AI calls, 100% deterministic             │
+    └──────────────────────────────────────────────┘
+                    ↓
+    ┌──────────────────────────────────────────────┐
+    │  Validation Engine                           │
+    │  Checks acceptance criteria                  │
+    └──────────────────────────────────────────────┘
+                    ↓
+    ┌──────────────────────────────────────────────┐
+    │  Report Generator                            │
+    │  HTML, JUnit XML, Screenshots                │
+    └──────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                        FIVE-LAYER ARCHITECTURE                                │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  Layer 5: Presentation                                          │
+    │  ────────────────────────                                       │
+    │  • CLI (compile, execute commands)                              │
+    │  • Report generators (HTML, JUnit)                              │
+    │  • Web UI (future)                                              │
+    └─────────────────────────────────────────────────────────────────┘
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  Layer 4: Infrastructure                                        │
+    │  ────────────────────────                                       │
+    │  • PlaywrightExecutor (browser automation)                      │
+    │  • LLMProviderFactory (OpenAI, Anthropic, Local)                │
+    │  • QuasiCodeParser (parse .qc files)                            │
+    │  • DatabaseWatcher (DB validation)                              │
+    │  • MultiStrategySelector (CSS, XPath, Text, Role, TestID)       │
+    └─────────────────────────────────────────────────────────────────┘
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  Layer 3: Application                                           │
+    │  ────────────────────────                                       │
+    │  • DecompositionEngine (LLM iterative discovery)                │
+    │  • ExecutionOrchestrator (run commands in order)                │
+    │  • ValidationEngine (check acceptance criteria)                 │
+    └─────────────────────────────────────────────────────────────────┘
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  Layer 2: Domain                                                │
+    │  ────────────────────────                                       │
+    │  • Task & Subtask models                                        │
+    │  • ValidationPredicate interface                                │
+    │  • CommandSpecification                                         │
+    │  • SelectorStrategy                                             │
+    └─────────────────────────────────────────────────────────────────┘
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  Layer 1: Configuration                                         │
+    │  ────────────────────────                                       │
+    │  • YamlConfigParser                                             │
+    │  • SchemaValidator                                              │
+    │  • EnvironmentResolver                                          │
+    └─────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                         QUASI-CODE COMMAND EXAMPLES                           │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+    Navigation:
+    ───────────
+    navigate url=https://example.com wait_until=networkidle
+    back
+    reload
+
+    Interaction:
+    ────────────
+    click css=button.submit timeout=5000
+    type css=input[name="email"] value=test@example.com clear=true
+    hover css=.dropdown-menu
+    select css=select[name="country"] value="USA"
+    upload css=input[type="file"] file=./document.pdf
+
+    Waiting:
+    ────────
+    wait css=.loading state=hidden timeout=10000
+    wait_navigation timeout=5000
+    wait_time milliseconds=1000
+
+    Assertions:
+    ───────────
+    assert_url pattern=.*/success message="Should redirect to success page"
+    assert_text css=.message contains="Thank you"
+    assert_visible css=.popup
+    assert_count css=.cart-item count=3
+
+    Database:
+    ─────────
+    db_watch table=orders field=status condition=equals value=completed timeout=5000
+
+    Utilities:
+    ──────────
+    screenshot path=./screenshots/step-1.png full_page=true
+    log message="Starting checkout process" level=info
+    pause message="Inspect page state"
+
+    Multiple Strategies with Fallback:
+    ───────────────────────────────────
+    click text="Login" fallback=css=button[type="submit"]
+    type role=textbox name="Email" fallback=css=input[type="email"] value=user@example.com
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                            KEY BENEFITS                                       │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+    ✓ Human-readable intermediate format (.qc files)
+    ✓ Fast execution (no LLM calls after compilation)
+    ✓ Easy to maintain (edit .qc files directly)
+    ✓ Deterministic (same .qc = same actions)
+    ✓ Debuggable (inspect quasi-code, add pause commands)
+    ✓ Version control friendly (small text diffs)
+    ✓ Iterative discovery (AI figures out correct actions)
+    ✓ TDD, SOLID, Clean Code, Strict TypeScript
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                          IMPLEMENTATION PHASES                                │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+    Phase 1: MVP (4-6 weeks)
+    ════════════════════════
+    ☐ YAML parser
+    ☐ LLM integration (OpenAI)
+    ☐ Iterative decomposition engine
+    ☐ Quasi-code parser
+    ☐ Playwright executor (basic commands)
+    ☐ CLI (compile + execute)
+    ☐ HTML reports
+
+    Phase 2: Production (6-8 weeks)
+    ════════════════════════════════
+    ☐ Multiple LLM providers
+    ☐ Advanced validation (DB watch, custom)
+    ☐ Error recovery & retries
+    ☐ Complete command set (30+ commands)
+    ☐ Multi-strategy selectors with fallbacks
+    ☐ JUnit XML reports
+    ☐ 90%+ test coverage
+
+    Phase 3: Advanced (8-12 weeks)
+    ═══════════════════════════════
+    ☐ Parallel execution
+    ☐ State management
+    ☐ Custom plugins
+    ☐ Performance monitoring
+    ☐ Web UI
+
+    Phase 4: Enterprise (Future)
+    ════════════════════════════
+    ☐ Visual test recorder
+    ☐ Selector healing
+    ☐ Analytics
+    ☐ Multi-browser
+    ☐ Team collaboration
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                           DOCUMENTATION COMPLETE                              ║
+║                    Ready for Phase 1 (MVP) Implementation                     ║
+╚═══════════════════════════════════════════════════════════════════════════════╝

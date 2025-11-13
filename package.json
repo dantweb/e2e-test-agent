@@ -1,0 +1,59 @@
+{
+  "name": "e2e-tester-agent",
+  "version": "1.0.0",
+  "description": "AI-driven E2E test automation with Playwright",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "test:e2e": "jest tests/e2e",
+    "test:performance": "echo 'Performance tests not yet implemented'",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src tests --ext .ts",
+    "lint:fix": "eslint src tests --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "prepare": "husky install"
+  },
+  "keywords": [
+    "e2e",
+    "testing",
+    "playwright",
+    "ai",
+    "automation",
+    "llm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.10.1",
+    "@types/yaml": "^1.9.6",
+    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/parser": "^8.46.4",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "jest": "^30.2.0",
+    "jest-extended": "^7.0.0",
+    "prettier": "^3.6.2",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.56.1",
+    "commander": "^14.0.2",
+    "playwright": "^1.56.1",
+    "winston": "^3.18.3",
+    "yaml": "^2.8.1",
+    "zod": "^4.1.12"
+  }
+}

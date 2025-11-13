@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Coverage
+coverage/
+*.lcov
+
+# Test results
+test-results/
+playwright-report/
+junit.xml
+test-report.html
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Generated files
+_generated/
+*.ox.test
+manifest.json
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Playwright browsers
+.playwright/

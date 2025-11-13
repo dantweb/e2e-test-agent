@@ -1,0 +1,194 @@
+@startuml State Diagram
+title e2e-tester-agent: Test Execution State Machine
+
+
+
+
+
+
+[*] --> Initialized : npm run e2e-test-run
+
+state "Initialized" as Init {
+  state "Load Manifest" as LoadManifest
+  state "Parse Configuration" as ParseConfig
+
+  [*] --> LoadManifest
+  LoadManifest --> ParseConfig : manifest.json loaded
+  ParseConfig --> [*] : config ready
+}
+
+Init --> TestQueueReady : configuration parsed
+
+state "Test Queue Ready" as TestQueueReady #FFF9C4
+note right of TestQueueReady
+  Queue contains all .ox.test files
+  from manifest.json
+end note
+
+TestQueueReady --> ExecutingTest : dequeue next test
+
+state "Executing Test" as ExecutingTest {
+  state "Parse Oxtest" as ParseQC
+  state "Initialize Context" as InitContext
+  state "Commands Ready" as CommandsReady
+
+  [*] --> ParseQC
+  ParseQC --> InitContext : commands parsed
+  InitContext --> CommandsReady : browser launched\ncontext created
+  CommandsReady --> [*]
+}
+
+ExecutingTest --> ExecutingCommands : ready to execute
+
+state "Executing Commands" as ExecutingCommands {
+  state "Sequential Execution" as SeqExec {
+    state "Command N" as CmdN {
+      state "Resolve Variables" as ResolveVars
+      state "Find Element" as FindElement
+      state "Execute Action" as ExecAction
+      state "Validate" as Validate
+
+      [*] --> ResolveVars
+      ResolveVars --> FindElement : variables resolved
+      FindElement --> ExecAction : element found
+      ExecAction --> Validate : action completed
+      Validate --> [*] : validation passed
+    }
+
+    state "Command Success" as CmdSuccess #C8E6C9
+    state "Command Failure" as CmdFailure #FFCDD2
+
+    [*] --> CmdN
+    CmdN --> CmdSuccess : command succeeded
+    CmdN --> CmdFailure : command failed
+    CmdSuccess --> CmdN : next command
+    CmdFailure --> [*] : stop execution
+  }
+
+  state "All Commands Complete" as AllComplete #C8E6C9
+  state "Execution Stopped" as ExecStopped #FFCDD2
+
+  [*] --> SeqExec
+  SeqExec --> AllComplete : all commands succeeded
+  SeqExec --> ExecStopped : any command failed
+}
+
+ExecutingCommands --> CleanupTest : execution finished
+
+state "Cleanup Test" as CleanupTest {
+  state "Take Screenshots" as Screenshots
+  state "Close Browser" as CloseBrowser
+  state "Destroy Context" as DestroyContext
+  state "Generate Report" as GenReport
+
+  [*] --> Screenshots : if failed
+  [*] --> CloseBrowser : if no error
+  Screenshots --> CloseBrowser
+  CloseBrowser --> DestroyContext
+  DestroyContext --> GenReport
+  GenReport --> [*]
+}
+
+CleanupTest --> TestComplete : cleanup done
+
+state "Test Complete" as TestComplete #C8E6C9
+note right of TestComplete
+  Test results recorded:
+  - Success/Failure
+  - Duration
+  - Screenshots
+  - Command results
+end note
+
+TestComplete --> TestQueueReady : more tests\nin queue
+TestComplete --> AllTestsComplete : queue empty
+
+state "All Tests Complete" as AllTestsComplete {
+  state "Aggregate Results" as Aggregate
+  state "Generate HTML Report" as HTMLReport
+  state "Generate JUnit XML" as JUnitReport
+
+  [*] --> Aggregate
+  Aggregate --> HTMLReport
+  Aggregate --> JUnitReport
+  HTMLReport --> [*]
+  JUnitReport --> [*]
+}
+
+AllTestsComplete --> [*] : exit
+
+' ========== Error States ==========
+
+InitContext --> ErrorState : browser launch failed
+FindElement --> ErrorState : element not found\n& no fallback
+ExecAction --> ErrorState : action failed
+Validate --> ErrorState : validation failed
+
+state "Error State" as ErrorState {
+  state "Capture Error Details" as CaptureError
+  state "Take Error Screenshot" as ErrorScreenshot
+  state "Log Error" as LogError
+
+  [*] --> CaptureError
+  CaptureError --> ErrorScreenshot
+  ErrorScreenshot --> LogError
+  LogError --> [*]
+}
+
+ErrorState --> CleanupTest : proceed to cleanup
+
+' ========== Shared Context State (Parallel) ==========
+
+note as ContextNote
+  **Execution Context (Shared State)**
+  Active throughout test execution:
+  ────────────────────────────────────
+  - Browser: Single instance
+  - Page: Single page object
+  - Cookies: Persisted automatically
+  - Variables: Map<string, string>
+  - Extracted Data: Map<string, unknown>
+  - Session: Maintained across commands
+
+  Context lifecycle:
+  Created: Start of test
+  Active: During all commands
+  Destroyed: End of test
+end note
+
+' ========== Command Retry Logic (Optional) ==========
+
+state "Retry Logic" as RetryLogic #FFF9C4
+note right of RetryLogic
+  If element not found:
+  1. Try fallback selector
+  2. Wait and retry (configurable)
+  3. If all fail → error state
+end note
+
+FindElement --> RetryLogic : primary failed,\nhas fallback
+RetryLogic --> FindElement : retry with fallback
+RetryLogic --> ErrorState : all selectors failed
+
+' ========== Validation Fork ==========
+
+Validate --> CmdSuccess : assertion passed
+Validate --> CmdFailure : assertion failed
+
+note bottom of ExecutingCommands
+  **Sequential Guarantee:**
+  Command N+1 never starts until
+  Command N completes (success or failure).
+  First failure stops all remaining commands.
+end note
+
+note bottom of CleanupTest
+  **Cleanup Always Runs:**
+  Even if test fails, cleanup ensures:
+  - Browser closed
+  - Context destroyed
+  - Resources freed
+  - Report generated
+end note
+
+@enduml

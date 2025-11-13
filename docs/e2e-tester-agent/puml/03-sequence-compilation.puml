@@ -1,0 +1,133 @@
+@startuml Compilation Sequence
+title Phase 1: Compilation - Iterative Discovery Process
+
+!define USER_COLOR #E3F2FD
+!define CLI_COLOR #FFF9C4
+!define ENGINE_COLOR #C5E1A5
+!define LLM_COLOR #BBDEFB
+!define OUTPUT_COLOR #E8F5E9
+
+actor User USER_COLOR
+participant "CompileCommand\n(CLI)" as CLI CLI_COLOR
+participant "YamlConfigParser" as Parser CLI_COLOR
+participant "IterativeDecompositionEngine" as Engine ENGINE_COLOR
+participant "LLMProvider\n(OpenAI/Anthropic)" as LLM LLM_COLOR
+participant "OxtestWriter" as Writer OUTPUT_COLOR
+database "_generated/\n(Output)" as Output OUTPUT_COLOR
+
+User -> CLI : npm run e2e-test-compile\n--src=test.yaml\n--output=_generated
+
+activate CLI
+
+CLI -> Parser : parse(test.yaml)
+activate Parser
+Parser --> CLI : TestConfiguration\n(jobs, acceptance)
+deactivate Parser
+
+loop For each job in configuration
+  CLI -> Engine : decompose(job)
+  activate Engine
+
+  note over Engine
+    **Iterative Refinement Process**
+  end note
+
+  == Pass 1: Initial Analysis ==
+  Engine -> LLM : query(\n  "Analyze job and create plan",\n  job.prompt + acceptance\n)
+  activate LLM
+  LLM --> Engine : Initial plan\n(steps needed)
+  deactivate LLM
+
+  note over Engine
+    Plan: [navigate, enter creds, submit, validate]
+  end note
+
+  == Pass 2: Command Generation (Loop) ==
+  loop For each step in plan
+    Engine -> Engine : Read current page state
+
+    Engine -> LLM : query(\n  "Generate command for step",\n  step + page HTML\n)
+    activate LLM
+    LLM --> Engine : Initial command\n(e.g., "type css=input value=admin")
+    deactivate LLM
+
+    == Refinement Loop ==
+    loop Max 3 refinement attempts
+      Engine -> Engine : validateCommand(\n  command,\n  pageHTML\n)
+
+      alt Command valid
+        note over Engine : Command validated ✓
+        Engine -> Engine : Break refinement loop
+      else Command has issues
+        note over Engine
+          Issues found:
+          - Ambiguous selector
+          - Element not unique
+        end note
+
+        Engine -> LLM : query(\n  "Refine command",\n  command + issues + HTML\n)
+        activate LLM
+        LLM --> Engine : Refined command\n(e.g., "type css=input[name='username'] value=admin")
+        deactivate LLM
+      end
+    end
+
+    Engine -> Engine : Add to command list
+
+    Engine -> Engine : simulateCommand(\n  updates mental model\n)
+  end
+
+  == Pass 3: Final Validation ==
+  Engine -> LLM : query(\n  "Validate sequence covers acceptance",\n  commands + acceptance criteria\n)
+  activate LLM
+  LLM --> Engine : Validation result +\nmissing commands
+  deactivate LLM
+
+  alt Missing commands
+    Engine -> LLM : query(\n  "Generate missing commands",\n  what's missing\n)
+    activate LLM
+    LLM --> Engine : Additional commands\n(assertions, waits)
+    deactivate LLM
+    Engine -> Engine : Append commands
+  end
+
+  == Output Generation ==
+  Engine --> CLI : Oxtest string\n(multi-line .ox.test content)
+  deactivate Engine
+
+  CLI -> Writer : write(\n  "_generated/job-name.ox.test",\n  oxtest\n)
+  activate Writer
+  Writer -> Output : job-name.ox.test
+  Writer --> CLI : Success
+  deactivate Writer
+end
+
+CLI -> Writer : write(\n  "_generated/manifest.json",\n  test metadata\n)
+activate Writer
+Writer -> Output : manifest.json
+Writer --> CLI : Success
+deactivate Writer
+
+CLI --> User : ✓ Compiled N jobs to _generated/
+
+deactivate CLI
+
+note over Output
+  **Generated Files:**
+  _generated/
+  ├── manifest.json
+  ├── login-test.ox.test
+  ├── shopping-test.ox.test
+  └── checkout-test.ox.test
+end note
+
+note over Engine
+  **Iterative Refinement Benefits:**
+  • Multiple validation passes
+  • Self-correction via LLM
+  • Verification against actual HTML
+  • Completeness check
+  • Higher accuracy output
+end note
+
+@enduml

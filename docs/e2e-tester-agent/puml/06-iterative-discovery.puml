@@ -1,0 +1,236 @@
+@startuml Iterative Discovery Process
+title LLM Iterative Discovery - How AI Generates Oxtest
+
+
+
+
+
+
+participant "IterativeDecompositionEngine" as Engine
+participant "LLM\n(OpenAI/Anthropic)" as LLM #BBDEFB
+database "Page State\n(HTML/DOM)" as PageState #C5E1A5
+participant "Command Validator" as Validator #F8BBD0
+participant "Oxtest Output" as Output #FFE0B2
+
+activate Engine
+
+== Initialization ==
+Engine -> Engine : Initialize
+note over Engine
+  Job: "Login to shop with username=admin password=secret"
+  Acceptance: "you are on the home page"
+end note
+
+Engine -> PageState : Get initial page HTML
+activate PageState
+PageState --> Engine : HTML structure
+deactivate PageState
+
+== Pass 1: Initial Plan ==
+Engine -> LLM : **Prompt:** Analyze job and create plan
+activate LLM
+note over LLM
+  **LLM Analysis:**
+  "To login, I need to:
+  1. Navigate to site
+  2. Find username field
+  3. Enter username
+  4. Find password field
+  5. Enter password
+  6. Click login button
+  7. Wait for home page
+  8. Validate URL"
+end note
+LLM --> Engine : Plan with 8 steps
+deactivate LLM
+
+== Pass 2: Iterative Command Generation ==
+
+loop For each step in plan
+
+  note over Engine #FFFFE0
+    **Step N:** Enter username
+  end note
+
+  Engine -> PageState : Get current HTML
+  activate PageState
+  PageState --> Engine : HTML with form fields
+  deactivate PageState
+
+  ' ----- Iteration 1: Initial Generation -----
+  ref over Engine, LLM, Validator
+    **Iteration 1: Initial Command Generation**
+  end ref
+
+  Engine -> LLM : **Prompt:** Generate command for "Enter username"\n\n**Context:**\n- Step: Enter username value "admin"\n- Current HTML: <form>...<input name="username">...
+  activate LLM
+
+  note over LLM
+    **LLM Initial Thought:**
+    "I see an input field.
+    Let me generate a type command."
+  end note
+
+  LLM --> Engine : **Command:** type css=input value=admin
+  deactivate LLM
+
+  ' ----- Validation & Refinement -----
+  Engine -> Validator : Validate command against HTML
+  activate Validator
+
+  note over Validator
+    **Validation Check:**
+    - Syntax: ✓ valid
+    - Selector "input": ✗ multiple matches
+    - Not specific enough
+  end note
+
+  Validator --> Engine : **Issues:**\n- Ambiguous selector (3 inputs found)\n- Need more specificity
+  deactivate Validator
+
+  ' ----- Iteration 2: Refinement -----
+  ref over Engine, LLM, Validator
+    **Iteration 2: Refinement**
+  end ref
+
+  Engine -> LLM : **Prompt:** Refine command\n\n**Issues:**\n- Selector "input" matches 3 elements\n- Need to be more specific\n\n**HTML:**\n<input name="username" type="text">\n<input name="password" type="password">\n<input name="remember" type="checkbox">
+  activate LLM
+
+  note over LLM
+    **LLM Refinement:**
+    "Ah, I need to specify which input.
+    The username field has name='username'.
+    Let me use that attribute."
+  end note
+
+  LLM --> Engine : **Refined:** type css=input[name="username"] value=admin
+  deactivate LLM
+
+  ' ----- Re-validation -----
+  Engine -> Validator : Validate refined command
+  activate Validator
+
+  note over Validator
+    **Validation Check:**
+    - Syntax: ✓ valid
+    - Selector: ✓ unique match
+    - Element exists: ✓ found in HTML
+    - Element type: ✓ input field
+  end note
+
+  Validator --> Engine : **Result:** ✓ Valid command
+  deactivate Validator
+
+  ' ----- Additional Safety Check -----
+  ref over Engine, LLM
+    **Iteration 3: Fallback Generation**
+  end ref
+
+  Engine -> LLM : **Prompt:** Generate fallback selector\n\n**Command:** type css=input[name="username"]\n**HTML:** <input name="username" type="text" placeholder="Username">
+  activate LLM
+
+  note over LLM
+    **LLM Fallback Thought:**
+    "If name attribute changes,
+    I could use type='text' + placeholder,
+    or just the placeholder text."
+  end note
+
+  LLM --> Engine : **Fallback:** placeholder="Username"
+  deactivate LLM
+
+  ' ----- Final Command -----
+  Engine -> Output : **Final Command:**\ntype css=input[name="username"] fallback=placeholder="Username" value=admin
+  activate Output
+  note over Output #E8F5E9
+    ✓ Command validated and saved
+  end note
+  deactivate Output
+
+  ' ----- Simulate Result -----
+  Engine -> PageState : Simulate command execution
+  activate PageState
+  note over PageState
+    **Mental Model Update:**
+    Username field now filled
+  end note
+  deactivate PageState
+
+end
+
+note over Engine
+  **All steps processed**
+  Commands generated for all 8 steps
+end note
+
+== Pass 3: Completeness Validation ==
+
+Engine -> Engine : Collect all generated commands
+note over Engine
+  Generated commands:
+  1. navigate url=...
+  2. type css=input[name="username"] ...
+  3. type css=input[type="password"] ...
+  4. click css=button[type="submit"]
+  5. wait_navigation timeout=5000
+  6. assert_url pattern=.*/home
+end note
+
+Engine -> LLM : **Prompt:** Validate completeness\n\n**Commands:** [list of commands]\n**Acceptance:** "you are on the home page"\n\n**Question:** Do these commands fully satisfy acceptance criteria?
+activate LLM
+
+note over LLM
+  **LLM Analysis:**
+  "Commands navigate and validate URL.
+  But acceptance says 'see no errors'.
+  Need to add error check!"
+end note
+
+LLM --> Engine : **Missing:** Need to assert no errors visible
+deactivate LLM
+
+' ----- Generate Missing Commands -----
+Engine -> LLM : **Prompt:** Generate missing validation\n\n**Need:** Check that no errors are visible\n**Context:** Home page after login
+activate LLM
+
+LLM --> Engine : **Additional Command:**\nassert_not_exists css=.error,.alert-error message="No error messages"
+deactivate LLM
+
+Engine -> Output : Add command to sequence
+activate Output
+deactivate Output
+
+== Final Output ==
+
+Engine -> Output : Write complete oxtest file
+activate Output
+
+note over Output #E8F5E9
+  **Final Output: login-test.ox.test**
+
+  # Login to shop
+  navigate url=https://myshop.com/login
+  type css=input[name="username"] fallback=placeholder="Username" value=admin
+  type css=input[type="password"] fallback=placeholder="Password" value=secret
+  click css=button[type="submit"] fallback=text="Login"
+  wait_navigation timeout=5000
+  assert_url pattern=.*/home message="Should be on home page"
+  assert_not_exists css=.error,.alert-error message="No error messages"
+end note
+
+Output --> Engine : ✓ Oxtest file written
+deactivate Output
+
+deactivate Engine
+
+note bottom
+  **Iterative Discovery Benefits:**
+  ✓ Multiple validation passes
+  ✓ Self-correction via refinement
+  ✓ Verification against actual HTML
+  ✓ Completeness checking
+  ✓ Fallback selector generation
+  ✓ Higher accuracy than single-shot
+end note
+
+@enduml

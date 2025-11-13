@@ -1,0 +1,224 @@
+@startuml Dependency Diagram
+title e2e-tester-agent: Component Dependencies
+
+
+
+
+
+
+
+skinparam componentStyle rectangle
+skinparam backgroundColor white
+skinparam component {
+  BorderColor Black
+  ArrowColor #01579B
+}
+
+' ========== External Systems ==========
+package "External Systems" <<Cloud>> #CFD8DC {
+  [Playwright\nBrowser API] as Playwright
+  [OpenAI API] as OpenAI
+  [Anthropic API] as Anthropic
+  [MySQL/PostgreSQL] as Database
+  [File System] as FileSystem
+}
+
+' ========== Presentation Layer ==========
+package "Presentation Layer" <<Rectangle>> #F8BBD0 {
+  component "CLI Commands" as CLI {
+    [CompileCommand]
+    [ExecuteCommand]
+  }
+
+  component "Reporters" as Reporters {
+    [HTMLReporter]
+    [JUnitReporter]
+  }
+}
+
+' ========== Application Layer ==========
+package "Application Layer" <<Rectangle>> #C5E1A5 {
+  component "Decomposition" as Decomp {
+    [IterativeDecompositionEngine]
+    interface "IDecompositionEngine" as IDecomp
+    IterativeDecompositionEngine -up- IDecomp
+  }
+
+  component "Orchestration" as Orch {
+    [SequentialExecutionOrchestrator]
+    interface "IExecutionOrchestrator" as IOrch
+    SequentialExecutionOrchestrator -up- IOrch
+  }
+
+  component "Validation" as Valid {
+    [PredicateValidationEngine]
+    interface "IValidationEngine" as IValid
+    PredicateValidationEngine -up- IValid
+  }
+
+  component "Context" as Ctx {
+    [ExecutionContext]
+  }
+}
+
+' ========== Infrastructure Layer ==========
+package "Infrastructure Layer" <<Rectangle>> #B3E5FC {
+  component "LLM Providers" as LLMProv {
+    [LLMProviderFactory]
+    [OpenAILLMProvider]
+    [AnthropicLLMProvider]
+    interface "ILLMProvider" as ILLM
+    OpenAILLMProvider -up- ILLM
+    AnthropicLLMProvider -up- ILLM
+    LLMProviderFactory ..> ILLM : creates
+  }
+
+  component "Browser Automation" as BrowserAuto {
+    [PlaywrightExecutor]
+    [MultiStrategySelector]
+    interface "IPlaywrightExecutor" as IPW
+    interface "ISelectorStrategy" as ISelector
+    PlaywrightExecutor -up- IPW
+    MultiStrategySelector -up- ISelector
+  }
+
+  component "Parsing" as Parse {
+    [OxtestParser]
+    [YamlConfigParser]
+  }
+
+  component "Data Access" as DataAccess {
+    [MySQLDatabaseWatcher]
+    interface "IDatabaseWatcher" as IDB
+    MySQLDatabaseWatcher -up- IDB
+  }
+}
+
+' ========== Domain Layer ==========
+package "Domain Layer" <<Rectangle>> #FFF9C4 {
+  component "Models" as Models {
+    [Task]
+    [Subtask]
+    [OxtestCommand]
+    [SelectorSpec]
+  }
+
+  component "Interfaces" as Interfaces {
+    [ValidationPredicate\n<<interface>>]
+  }
+
+  component "Enums" as Enums {
+    [ActionType]
+    [TaskStatus]
+  }
+}
+
+' ========== Presentation → Application ==========
+CompileCommand --> IDecomp : uses
+CompileCommand --> YamlConfigParser : uses
+ExecuteCommand --> IOrch : uses
+ExecuteCommand --> OxtestParser : uses
+ExecuteCommand --> Reporters : uses
+
+' ========== Application → Infrastructure (via interfaces) ==========
+IterativeDecompositionEngine --> ILLM : depends on
+SequentialExecutionOrchestrator --> IPW : depends on
+SequentialExecutionOrchestrator --> IValid : depends on
+SequentialExecutionOrchestrator --> ExecutionContext : uses
+PredicateValidationEngine --> ILLM : depends on
+
+' ========== Infrastructure → Domain ==========
+PlaywrightExecutor --> OxtestCommand : executes
+PlaywrightExecutor --> SelectorSpec : uses
+OxtestParser --> OxtestCommand : creates
+OxtestParser --> SelectorSpec : creates
+YamlConfigParser --> Task : creates
+
+' ========== Application → Domain ==========
+IterativeDecompositionEngine --> Task : creates
+IterativeDecompositionEngine --> OxtestCommand : generates
+SequentialExecutionOrchestrator --> OxtestCommand : executes
+PredicateValidationEngine --> ValidationPredicate : implements
+
+' ========== Infrastructure → External ==========
+OpenAILLMProvider --> OpenAI : API calls
+AnthropicLLMProvider --> Anthropic : API calls
+PlaywrightExecutor --> Playwright : controls
+MySQLDatabaseWatcher --> Database : queries
+OxtestParser --> FileSystem : reads .ox.test
+YamlConfigParser --> FileSystem : reads .yaml
+Reporters --> FileSystem : writes reports
+
+' ========== Internal Infrastructure Dependencies ==========
+PlaywrightExecutor --> MultiStrategySelector : uses
+LLMProviderFactory --> OpenAILLMProvider : creates
+LLMProviderFactory --> AnthropicLLMProvider : creates
+
+' ========== Key Annotations ==========
+
+note right of IDecomp
+  **Dependency Inversion:**
+  Application depends on
+  interfaces, not concrete
+  implementations
+end note
+
+note right of ExecutionContext
+  **Shared Context:**
+  Single instance per test
+  Maintains browser state,
+  variables, extracted data
+end note
+
+note bottom of Models
+  **Domain Layer:**
+  No dependencies on
+  outer layers. Pure
+  business logic.
+end note
+
+note bottom of LLMProv
+  **Factory Pattern:**
+  Runtime selection of
+  LLM provider based
+  on configuration
+end note
+
+note bottom of BrowserAuto
+  **Strategy Pattern:**
+  Multiple selector
+  strategies (CSS, XPath,
+  Text, Role, TestID)
+end note
+
+note as DependencyRules
+  **Clean Architecture Rules:**
+  ──────────────────────────────
+  ✓ Dependencies point INWARD
+  ✓ Domain has NO dependencies
+  ✓ Application depends on Domain
+  ✓ Infrastructure depends on Domain
+  ✓ Presentation depends on Application
+  ✓ Infrastructure implements interfaces
+    defined in inner layers
+  ✗ Inner layers NEVER depend on outer
+end note
+
+' Layout hint removed
+
+' ========== Legend ==========
+legend bottom left
+  **Dependency Types:**
+  ───────────────────
+  Solid arrow (→): Direct dependency
+  Dashed arrow (⇢): Interface implementation
+
+  **Colors:**
+  Pink: Presentation Layer (CLI, Reports)
+  Blue: Infrastructure Layer (Playwright, LLM, Parsers)
+  Green: Application Layer (Engines, Orchestrators)
+  Yellow: Domain Layer (Models, Interfaces)
+  Gray: External Systems
+endlegend
+
+@enduml

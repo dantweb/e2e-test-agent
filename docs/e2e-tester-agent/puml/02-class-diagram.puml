@@ -1,0 +1,309 @@
+@startuml Class Diagram
+title e2e-tester-agent: Core Class Structure
+
+!define DOMAIN_COLOR #FFF9C4
+!define APPLICATION_COLOR #C5E1A5
+!define INFRASTRUCTURE_COLOR #B3E5FC
+!define PRESENTATION_COLOR #F8BBD0
+
+skinparam backgroundColor white
+skinparam classAttributeIconSize 0
+
+' ========== Domain Layer ==========
+package "Domain Layer" <<Rectangle>> DOMAIN_COLOR {
+
+  interface ValidationPredicate {
+    +type: ValidationType
+    +criteria: string
+    +params: Record<string, unknown>
+    +evaluate(result: ExecutionResult): Promise<ValidationResult>
+  }
+
+  class Task {
+    +id: string
+    +title: string
+    +description: string
+    +subtasks: ReadonlyArray<Subtask>
+    +metadata: TaskMetadata
+    +isComplete(): boolean
+    +hasFailures(): boolean
+  }
+
+  class Subtask {
+    +id: number
+    +title: string
+    +prompt: string
+    +action: ActionType
+    +selector?: ElementSelector
+    +value?: string
+    +dependencies: ReadonlyArray<number>
+    +acceptance: ReadonlyArray<ValidationPredicate>
+    +status: TaskStatus
+    +result?: ExecutionResult
+    +canExecute(completed: Set<number>): boolean
+    +markComplete(result: ExecutionResult): void
+    +markFailed(error: Error): void
+  }
+
+  class OxtestCommand {
+    +line: number
+    +command: string
+    +selector?: SelectorSpec
+    +params: Record<string, string>
+  }
+
+  class SelectorSpec {
+    +strategy: 'css'|'xpath'|'text'|'role'|'testid'
+    +value: string
+    +fallback?: SelectorSpec
+  }
+
+  enum ActionType {
+    Navigate
+    Click
+    Type
+    Wait
+    Assert
+    Screenshot
+  }
+
+  enum TaskStatus {
+    Pending
+    InProgress
+    Completed
+    Failed
+    Blocked
+  }
+
+  Task "1" *-- "many" Subtask
+  Subtask "1" *-- "many" ValidationPredicate
+  OxtestCommand "1" *-- "0..1" SelectorSpec
+  SelectorSpec "1" o-- "0..1" SelectorSpec : fallback
+}
+
+' ========== Application Layer ==========
+package "Application Layer" <<Rectangle>> APPLICATION_COLOR {
+
+  interface IDecompositionEngine {
+    +decompose(job: JobDefinition): Promise<string>
+    +refine(commands: string[], issues: string[]): Promise<string[]>
+  }
+
+  class IterativeDecompositionEngine {
+    -llmProvider: ILLMProvider
+    -maxIterations: number = 10
+    +decompose(job: JobDefinition): Promise<string>
+    -generateInitialPlan(job: JobDefinition): Promise<Plan>
+    -generateCommand(step: Step, state: PageState): Promise<string>
+    -refineCommand(cmd: string, issues: string[]): Promise<string>
+    -validateCommand(cmd: string, state: PageState): Promise<ValidationResult>
+    -simulateCommand(cmd: string, state: PageState): PageState
+  }
+
+  interface IExecutionOrchestrator {
+    +execute(commands: OxtestCommand[]): Promise<ExecutionReport>
+  }
+
+  class SequentialExecutionOrchestrator {
+    -executor: IPlaywrightExecutor
+    -validator: IValidationEngine
+    -context: ExecutionContext
+    +execute(commands: OxtestCommand[]): Promise<ExecutionReport>
+    -executeCommand(cmd: OxtestCommand): Promise<CommandResult>
+  }
+
+  interface IValidationEngine {
+    +validate(subtask: Subtask, result: ExecutionResult): Promise<ValidationResult>
+    +buildValidators(acceptance: string[]): ValidationPredicate[]
+  }
+
+  class PredicateValidationEngine {
+    -llmProvider: ILLMProvider
+    -domHelper: IDomHelper
+    +validate(subtask: Subtask, result: ExecutionResult): Promise<ValidationResult>
+    +buildValidators(acceptance: string[]): ValidationPredicate[]
+    -parseAcceptance(criteria: string): ValidationPredicate
+  }
+
+  class ExecutionContext {
+    +page: Page
+    +browser: Browser
+    +context: BrowserContext
+    +variables: Map<string, string>
+    +extractedData: Map<string, unknown>
+    +testId: string
+    +startTime: Date
+    +setVariable(name: string, value: string): void
+    +getVariable(name: string): string | undefined
+    +extractData(name: string, value: unknown): void
+    +getData(name: string): unknown
+  }
+
+  IterativeDecompositionEngine ..|> IDecompositionEngine
+  SequentialExecutionOrchestrator ..|> IExecutionOrchestrator
+  PredicateValidationEngine ..|> IValidationEngine
+
+  SequentialExecutionOrchestrator "1" o-- "1" ExecutionContext
+}
+
+' ========== Infrastructure Layer ==========
+package "Infrastructure Layer" <<Rectangle>> INFRASTRUCTURE_COLOR {
+
+  interface ILLMProvider {
+    +query(system: string, user: string): Promise<LLMResponse>
+    +queryStructured<T>(system: string, user: string, schema: JSONSchema): Promise<T>
+  }
+
+  class OpenAILLMProvider {
+    -apiKey: string
+    -model: string
+    -temperature: number
+    +query(system: string, user: string): Promise<LLMResponse>
+    +queryStructured<T>(system: string, user: string, schema: JSONSchema): Promise<T>
+  }
+
+  class AnthropicLLMProvider {
+    -apiKey: string
+    -model: string
+    +query(system: string, user: string): Promise<LLMResponse>
+    +queryStructured<T>(system: string, user: string, schema: JSONSchema): Promise<T>
+  }
+
+  class LLMProviderFactory {
+    +{static} create(config: LLMConfig): ILLMProvider
+  }
+
+  interface IPlaywrightExecutor {
+    +execute(cmd: OxtestCommand): Promise<ExecutionResult>
+    +initialize(config: BrowserConfig): Promise<void>
+    +cleanup(): Promise<void>
+  }
+
+  class PlaywrightExecutor {
+    -page?: Page
+    -context?: BrowserContext
+    -selectorStrategy: ISelectorStrategy
+    -logger: ILogger
+    +execute(cmd: OxtestCommand): Promise<ExecutionResult>
+    +initialize(config: BrowserConfig): Promise<void>
+    +cleanup(): Promise<void>
+    -executeAction(cmd: OxtestCommand): Promise<unknown>
+    -navigate(url: string): Promise<void>
+    -click(selector: SelectorSpec): Promise<void>
+    -type(selector: SelectorSpec, text: string): Promise<void>
+    -findElement(selector: SelectorSpec): Promise<Locator>
+  }
+
+  interface ISelectorStrategy {
+    +locate(page: Page, selector: SelectorSpec): Promise<Locator>
+  }
+
+  class MultiStrategySelector {
+    +locate(page: Page, selector: SelectorSpec): Promise<Locator>
+    -locateByCss(page: Page, value: string): Locator
+    -locateByXPath(page: Page, value: string): Locator
+    -locateByText(page: Page, value: string): Locator
+    -locateByRole(page: Page, value: string): Locator
+  }
+
+  class OxtestParser {
+    +parse(filePath: string): OxtestCommand[]
+    +parseContent(content: string): OxtestCommand[]
+    -parseLine(line: string, lineNum: number): OxtestCommand
+    -parseSelector(token: string): SelectorSpec
+    -tokenize(line: string): string[]
+  }
+
+  OpenAILLMProvider ..|> ILLMProvider
+  AnthropicLLMProvider ..|> ILLMProvider
+  LLMProviderFactory ..> ILLMProvider : creates
+
+  PlaywrightExecutor ..|> IPlaywrightExecutor
+  MultiStrategySelector ..|> ISelectorStrategy
+  PlaywrightExecutor "1" o-- "1" ISelectorStrategy
+}
+
+' ========== Presentation Layer ==========
+package "Presentation Layer" <<Rectangle>> PRESENTATION_COLOR {
+
+  interface CLICommand {
+    +name: string
+    +description: string
+    +execute(args: CLIArguments): Promise<void>
+  }
+
+  class CompileCommand {
+    -configParser: IConfigParser
+    -decompositionEngine: IDecompositionEngine
+    -outputWriter: IOutputWriter
+    +name: "e2e-test-compile"
+    +execute(args: CLIArguments): Promise<void>
+  }
+
+  class ExecuteCommand {
+    -taskLoader: ITaskLoader
+    -orchestrator: IExecutionOrchestrator
+    -reporter: IReporter
+    +name: "e2e-test-run"
+    +execute(args: CLIArguments): Promise<void>
+  }
+
+  interface IReporter {
+    +generate(output: string, reports: ExecutionReport[]): Promise<void>
+  }
+
+  class HTMLReporter {
+    +generate(output: string, reports: ExecutionReport[]): Promise<void>
+    -buildHTML(reports: ExecutionReport[]): string
+  }
+
+  class JUnitReporter {
+    +generate(output: string, reports: ExecutionReport[]): Promise<void>
+    -buildXML(reports: ExecutionReport[]): string
+  }
+
+  CompileCommand ..|> CLICommand
+  ExecuteCommand ..|> CLICommand
+  HTMLReporter ..|> IReporter
+  JUnitReporter ..|> IReporter
+}
+
+' ========== Cross-Layer Dependencies ==========
+IterativeDecompositionEngine ..> ILLMProvider : uses
+SequentialExecutionOrchestrator ..> IPlaywrightExecutor : uses
+SequentialExecutionOrchestrator ..> IValidationEngine : uses
+PredicateValidationEngine ..> ILLMProvider : uses
+
+CompileCommand ..> IDecompositionEngine : uses
+CompileCommand ..> OxtestParser : creates .ox.test files
+ExecuteCommand ..> OxtestParser : parses .ox.test files
+ExecuteCommand ..> IExecutionOrchestrator : uses
+ExecuteCommand ..> IReporter : uses
+
+PlaywrightExecutor ..> OxtestCommand : executes
+OxtestParser ..> OxtestCommand : creates
+
+note bottom of IterativeDecompositionEngine
+  **Iterative Refinement Process:**
+  1. Generate initial plan
+  2. For each step:
+     - Generate command
+     - Validate against HTML
+     - Refine if needed
+  3. Add acceptance validations
+  4. Output oxtest
+end note
+
+note bottom of ExecutionContext
+  **Shared across all commands**
+  Single session, single browser,
+  variables and data persist
+end note
+
+note bottom of SequentialExecutionOrchestrator
+  **Sequential Execution:**
+  Commands run one at a time,
+  in order, with guaranteed state
+end note
+
+@enduml

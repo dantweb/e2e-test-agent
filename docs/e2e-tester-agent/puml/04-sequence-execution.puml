@@ -1,0 +1,196 @@
+@startuml Execution Sequence
+title Phase 2: Execution - Sequential Command Processing
+
+!define USER_COLOR #E3F2FD
+!define CLI_COLOR #FFF9C4
+!define PARSER_COLOR #F3E5F5
+!define EXECUTOR_COLOR #B3E5FC
+!define CONTEXT_COLOR #C5CAE9
+!define PLAYWRIGHT_COLOR #FFE0B2
+
+actor User USER_COLOR
+participant "ExecuteCommand\n(CLI)" as CLI CLI_COLOR
+participant "OxtestParser" as Parser PARSER_COLOR
+participant "SequentialExecutionOrchestrator" as Orchestrator EXECUTOR_COLOR
+participant "ExecutionContext\n(Shared State)" as Context CONTEXT_COLOR
+participant "PlaywrightExecutor" as Executor EXECUTOR_COLOR
+participant "Playwright\n(Browser)" as Browser PLAYWRIGHT_COLOR
+participant "ValidationEngine" as Validator EXECUTOR_COLOR
+participant "HTMLReporter" as Reporter CLI_COLOR
+
+User -> CLI : npm run e2e-test-run _generated
+
+activate CLI
+
+CLI -> CLI : Load manifest.json
+
+loop For each test file in manifest
+  CLI -> Parser : parse("_generated/job-name.ox.test")
+  activate Parser
+  Parser --> CLI : OxtestCommand[]\n(parsed commands)
+  deactivate Parser
+
+  CLI -> Orchestrator : execute(commands)
+  activate Orchestrator
+
+  == Initialize Context ==
+  Orchestrator -> Context : new ExecutionContext()
+  activate Context
+  note over Context
+    **Shared Context Created:**
+    - Browser instance
+    - Page object
+    - Variables map
+    - Extracted data map
+  end note
+
+  Orchestrator -> Executor : initialize(browserConfig)
+  activate Executor
+  Executor -> Browser : launch browser\ncreate context\nnew page
+  activate Browser
+  Browser --> Executor : Page ready
+  deactivate Browser
+  Executor --> Orchestrator : Initialized
+  deactivate Executor
+
+  == Sequential Command Execution ==
+  loop For each command in commands (sequential)
+    note over Orchestrator
+      **Command N:** Must complete
+      before Command N+1 starts
+    end note
+
+    Orchestrator -> Orchestrator : Log: "Executing command N"
+
+    Orchestrator -> Context : Resolve variables\n(${VAR_NAME})
+    Context --> Orchestrator : Resolved values
+
+    Orchestrator -> Executor : execute(command)
+    activate Executor
+
+    alt Command: navigate
+      Executor -> Browser : page.goto(url)
+      activate Browser
+      Browser --> Executor : Navigation complete
+      deactivate Browser
+
+    else Command: type
+      Executor -> Executor : findElement(selector)
+      Executor -> Browser : locator.fill(value)
+      activate Browser
+      Browser --> Executor : Text entered
+      deactivate Browser
+
+    else Command: click
+      Executor -> Executor : findElement(selector)
+      Executor -> Browser : locator.click()
+      activate Browser
+      Browser --> Executor : Click performed
+      deactivate Browser
+
+    else Command: wait
+      Executor -> Browser : locator.waitFor(state)
+      activate Browser
+      Browser --> Executor : Wait complete
+      deactivate Browser
+
+    else Command: get_text (extract data)
+      Executor -> Browser : locator.textContent()
+      activate Browser
+      Browser --> Executor : Text content
+      deactivate Browser
+      Executor -> Context : extractData(name, value)
+      Context -> Context : Store in extractedData map
+
+    else Command: assert_url
+      Executor -> Browser : page.url()
+      activate Browser
+      Browser --> Executor : Current URL
+      deactivate Browser
+      Executor -> Validator : validate(assertion)
+      activate Validator
+      Validator --> Executor : ValidationResult
+      deactivate Validator
+    end
+
+    Executor --> Orchestrator : CommandResult\n(success/failure)
+    deactivate Executor
+
+    alt Command succeeded
+      Orchestrator -> Orchestrator : Log: "✓ Command succeeded"
+      Orchestrator -> Orchestrator : Continue to next command
+    else Command failed
+      Orchestrator -> Executor : Take screenshot
+      activate Executor
+      Executor -> Browser : page.screenshot()
+      activate Browser
+      Browser --> Executor : Screenshot data
+      deactivate Browser
+      Executor --> Orchestrator : Screenshot saved
+      deactivate Executor
+
+      Orchestrator -> Orchestrator : Log: "✗ Command failed"
+      Orchestrator -> Orchestrator : STOP execution\n(sequential guarantee)
+      note over Orchestrator
+        **Sequential Execution:**
+        First failure stops all
+        remaining commands
+      end note
+    end
+  end
+
+  == Cleanup ==
+  Orchestrator -> Executor : cleanup()
+  activate Executor
+  Executor -> Browser : Close browser
+  activate Browser
+  deactivate Browser
+  deactivate Executor
+
+  Orchestrator -> Context : Dispose context
+  deactivate Context
+
+  Orchestrator --> CLI : ExecutionReport\n(results, timings, errors)
+  deactivate Orchestrator
+end
+
+== Report Generation ==
+CLI -> Reporter : generate(reports)
+activate Reporter
+Reporter -> Reporter : Build HTML report
+Reporter --> CLI : report.html created
+deactivate Reporter
+
+CLI --> User : ✓ Tests complete\nOpen _generated/report.html
+
+deactivate CLI
+
+note over Context
+  **Context Lifecycle:**
+  - Created: Start of test
+  - Persists: Entire test duration
+  - Browser session maintained
+  - Variables/data shared
+  - Destroyed: End of test
+end note
+
+note over Orchestrator
+  **Sequential Guarantees:**
+  • Command N+1 never starts
+    until Command N completes
+  • State is consistent at
+    each command boundary
+  • First error stops execution
+  • Predictable, debuggable flow
+end note
+
+note over Executor
+  **Selector Strategy with Fallback:**
+  1. Try primary selector
+  2. If fails, try fallback
+  3. If no fallback, error
+  4. AI-generated selectors
+     pre-embedded in .ox.test file
+end note
+
+@enduml

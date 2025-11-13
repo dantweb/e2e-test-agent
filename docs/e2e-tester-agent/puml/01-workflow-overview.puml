@@ -1,0 +1,80 @@
+@startuml Workflow Overview
+title e2e-tester-agent: Two-Phase Workflow
+
+skinparam backgroundColor white
+skinparam shadowing false
+
+package "Phase 1: Compilation (AI-Driven, Run Once)" #E1F5FE {
+  rectangle "User writes YAML" as yaml #FFFDE7
+  rectangle "CLI: compile" as compile_cmd #FFF9C4
+  rectangle "LLM Iterative Discovery" as llm_discovery #BBDEFB
+  rectangle "Iterative Refinement" as refinement #90CAF9
+  rectangle "Oxtest Output" as qc_output #E8F5E9
+
+  yaml --> compile_cmd
+  compile_cmd --> llm_discovery
+  llm_discovery --> refinement
+  refinement --> qc_output
+}
+
+package "Phase 2: Execution (Deterministic, Run Many Times)" #F3E5F5 {
+  rectangle "CLI: execute" as run_cmd #FFF9C4
+  rectangle "Oxtest Parser" as parser #CE93D8
+  rectangle "Sequential Executor" as executor #BA68C8
+  rectangle "Shared Context" as context #AB47BC
+  rectangle "Validation Engine" as validation #9C27B0
+  rectangle "Report Generator" as reporter #E8F5E9
+
+  run_cmd --> parser
+  parser --> executor
+  executor --> context
+  context --> executor : "State persists"
+  executor --> validation
+  validation --> reporter
+}
+
+qc_output --> run_cmd : "Generated .ox.test files"
+
+note right of yaml
+  payment-flow:
+    jobs:
+      - name: login
+        prompt: Login with user/pass
+        acceptance: you see homepage
+end note
+
+note right of qc_output
+  # login-test.ox.test
+  navigate url=https://shop.com
+  type css=input[name="username"] value=admin
+  click text="Login"
+  assert_url pattern=.*/home
+end note
+
+note right of reporter
+  Output:
+  - HTML report
+  - JUnit XML
+  - Screenshots
+  - Logs
+end note
+
+note bottom of "Phase 1: Compilation (AI-Driven, Run Once)"
+  **Characteristics:**
+  - AI-powered
+  - Run once per YAML change
+  - Generates human-readable oxtest
+  - 3-5 seconds per job
+  - Requires LLM API key
+end note
+
+note bottom of "Phase 2: Execution (Deterministic, Run Many Times)"
+  **Characteristics:**
+  - No AI required
+  - Fast execution (< 1 sec/command)
+  - Deterministic & repeatable
+  - Edit .ox.test files directly
+  - Standard debugging tools
+end note
+
+@enduml

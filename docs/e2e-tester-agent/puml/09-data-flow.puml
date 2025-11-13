@@ -1,0 +1,46 @@
+@startuml Data Flow Diagram
+title e2e-tester-agent: Data Flow from YAML to Reports
+
+skinparam backgroundColor white
+
+rectangle "YAML Input" as YAML #FFF9C4
+rectangle "Config Parser" as Parser #E1F5FE
+rectangle "LLM Decomposer" as LLM #BBDEFB
+rectangle "Oxtest Files" as Oxtest #E8F5E9
+rectangle "Oxtest Parser" as OxParser #CE93D8
+rectangle "Playwright Executor" as Executor #BA68C8
+rectangle "Test Results" as Results #C8E6C9
+rectangle "HTML Report" as HTMLReport #A5D6A7
+rectangle "JUnit XML" as JUnit #A5D6A7
+
+YAML --> Parser : Parse
+Parser --> LLM : Decompose
+LLM --> Oxtest : Generate
+Oxtest --> OxParser : Parse
+OxParser --> Executor : Execute
+Executor --> Results : Collect
+Results --> HTMLReport : Format
+Results --> JUnit : Format
+
+note right of YAML
+  test.yaml
+  - Test specifications
+  - Natural language prompts
+  - Acceptance criteria
+end note
+
+note right of Oxtest
+  login-test.ox.test
+  - Generated commands
+  - Explicit selectors
+  - Human-readable
+end note
+
+note right of Results
+  - Pass/Fail status
+  - Execution times
+  - Screenshots
+  - Error messages
+end note
+
+@enduml
