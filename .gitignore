@@ -40,7 +40,6 @@ Thumbs.db
 .env.*.local
 
 # Generated files
-_generated/
 *.ox.test
 manifest.json
 
