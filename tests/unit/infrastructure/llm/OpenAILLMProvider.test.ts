@@ -189,9 +189,7 @@ describe('OpenAILLMProvider', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      mockCreate.mockRejectedValue(
-        new Error('API Error: Rate limit exceeded')
-      );
+      mockCreate.mockRejectedValue(new Error('API Error: Rate limit exceeded'));
 
       await expect(provider.generate('Test')).rejects.toThrow(
         'OpenAI API error: API Error: Rate limit exceeded'
@@ -207,9 +205,7 @@ describe('OpenAILLMProvider', () => {
 
       mockCreate.mockResolvedValue(mockResponse as any);
 
-      await expect(provider.generate('Test')).rejects.toThrow(
-        'No response from OpenAI'
-      );
+      await expect(provider.generate('Test')).rejects.toThrow('No response from OpenAI');
     });
 
     it('should combine system prompt and conversation history', async () => {

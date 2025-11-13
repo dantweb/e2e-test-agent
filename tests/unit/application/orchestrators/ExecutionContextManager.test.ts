@@ -21,9 +21,7 @@ describe('ExecutionContextManager', () => {
       const manager1 = new ExecutionContextManager();
       const manager2 = new ExecutionContextManager();
 
-      expect(manager1.getContext().sessionId).not.toBe(
-        manager2.getContext().sessionId
-      );
+      expect(manager1.getContext().sessionId).not.toBe(manager2.getContext().sessionId);
     });
   });
 
@@ -75,9 +73,7 @@ describe('ExecutionContextManager', () => {
 
   describe('Cookie Management', () => {
     it('should update cookies', () => {
-      const cookies = [
-        { name: 'session', value: 'abc123', domain: '.shop.dev', path: '/' },
-      ];
+      const cookies = [{ name: 'session', value: 'abc123', domain: '.shop.dev', path: '/' }];
 
       manager.updateCookies(cookies);
       const context = manager.getContext();
@@ -88,12 +84,8 @@ describe('ExecutionContextManager', () => {
     });
 
     it('should replace existing cookies', () => {
-      const cookies1 = [
-        { name: 'session', value: 'old', domain: '.shop.dev', path: '/' },
-      ];
-      const cookies2 = [
-        { name: 'session', value: 'new', domain: '.shop.dev', path: '/' },
-      ];
+      const cookies1 = [{ name: 'session', value: 'old', domain: '.shop.dev', path: '/' }];
+      const cookies2 = [{ name: 'session', value: 'new', domain: '.shop.dev', path: '/' }];
 
       manager.updateCookies(cookies1);
       manager.updateCookies(cookies2);
@@ -164,15 +156,11 @@ describe('ExecutionContextManager', () => {
     });
 
     it('should clone cookies independently', () => {
-      const cookies = [
-        { name: 'session', value: 'abc', domain: '.shop.dev', path: '/' },
-      ];
+      const cookies = [{ name: 'session', value: 'abc', domain: '.shop.dev', path: '/' }];
       manager.updateCookies(cookies);
 
       const clone = manager.clone();
-      const newCookies = [
-        { name: 'user', value: 'john', domain: '.shop.dev', path: '/' },
-      ];
+      const newCookies = [{ name: 'user', value: 'john', domain: '.shop.dev', path: '/' }];
       clone.updateCookies(newCookies);
 
       expect(manager.getContext().cookies).toHaveLength(1);
@@ -207,12 +195,8 @@ describe('ExecutionContextManager', () => {
     });
 
     it('should append cookies on merge', () => {
-      const cookies1 = [
-        { name: 'session', value: 'abc', domain: '.shop.dev', path: '/' },
-      ];
-      const cookies2 = [
-        { name: 'user', value: 'john', domain: '.shop.dev', path: '/' },
-      ];
+      const cookies1 = [{ name: 'session', value: 'abc', domain: '.shop.dev', path: '/' }];
+      const cookies2 = [{ name: 'user', value: 'john', domain: '.shop.dev', path: '/' }];
 
       manager.updateCookies(cookies1);
 
@@ -257,9 +241,7 @@ describe('ExecutionContextManager', () => {
     it('should reset context', () => {
       manager.setVariable('test', 'value');
       manager.setCurrentUrl('https://shop.dev');
-      manager.updateCookies([
-        { name: 'session', value: 'abc', domain: '.shop.dev', path: '/' },
-      ]);
+      manager.updateCookies([{ name: 'session', value: 'abc', domain: '.shop.dev', path: '/' }]);
 
       manager.reset();
 

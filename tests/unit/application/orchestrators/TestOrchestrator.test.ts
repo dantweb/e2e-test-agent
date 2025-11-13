@@ -1,5 +1,8 @@
 import { TestOrchestrator } from '../../../../src/application/orchestrators/TestOrchestrator';
-import { PlaywrightExecutor, ExecutionResult } from '../../../../src/infrastructure/executors/PlaywrightExecutor';
+import {
+  PlaywrightExecutor,
+  ExecutionResult,
+} from '../../../../src/infrastructure/executors/PlaywrightExecutor';
 import { ExecutionContextManager } from '../../../../src/application/orchestrators/ExecutionContextManager';
 import { Subtask } from '../../../../src/domain/entities/Subtask';
 import { Task } from '../../../../src/domain/entities/Task';
@@ -121,9 +124,7 @@ describe('TestOrchestrator', () => {
     it('should track execution duration', async () => {
       mockExecutor.execute.mockResolvedValue({ success: true, duration: 150 });
 
-      const subtask = new Subtask('sub-1', 'Test', [
-        new OxtestCommand('wait', { timeout: 100 }),
-      ]);
+      const subtask = new Subtask('sub-1', 'Test', [new OxtestCommand('wait', { timeout: 100 })]);
 
       const result = await orchestrator.executeSubtask(subtask);
 
@@ -236,9 +237,7 @@ describe('TestOrchestrator', () => {
         .mockResolvedValueOnce({ success: false, error: 'Failed', duration: 100 })
         .mockResolvedValueOnce({ success: true, duration: 100 });
 
-      const teardownCommands = [
-        new OxtestCommand('screenshot', { path: '/tmp/error.png' }),
-      ];
+      const teardownCommands = [new OxtestCommand('screenshot', { path: '/tmp/error.png' })];
 
       const subtask = new Subtask('sub-1', 'Main action', [
         new OxtestCommand('click', {}, new SelectorSpec('css', 'button')),
@@ -255,9 +254,7 @@ describe('TestOrchestrator', () => {
     it('should handle missing subtask IDs', async () => {
       mockExecutor.execute.mockResolvedValue({ success: true, duration: 100 });
 
-      const subtask = new Subtask('sub-1', 'Action', [
-        new OxtestCommand('wait', { timeout: 100 }),
-      ]);
+      const subtask = new Subtask('sub-1', 'Action', [new OxtestCommand('wait', { timeout: 100 })]);
 
       const task = new Task('task-1', 'Test task', ['sub-1', 'sub-missing']);
 
@@ -270,9 +267,7 @@ describe('TestOrchestrator', () => {
     it('should track total task duration', async () => {
       mockExecutor.execute.mockResolvedValue({ success: true, duration: 100 });
 
-      const subtask = new Subtask('sub-1', 'Test', [
-        new OxtestCommand('wait', { timeout: 100 }),
-      ]);
+      const subtask = new Subtask('sub-1', 'Test', [new OxtestCommand('wait', { timeout: 100 })]);
 
       const task = new Task('task-1', 'Test task', ['sub-1']);
 
@@ -289,9 +284,7 @@ describe('TestOrchestrator', () => {
 
       contextManager.setVariable('user', 'admin');
 
-      const subtask = new Subtask('sub-1', 'Test', [
-        new OxtestCommand('wait', { timeout: 100 }),
-      ]);
+      const subtask = new Subtask('sub-1', 'Test', [new OxtestCommand('wait', { timeout: 100 })]);
 
       const task = new Task('task-1', 'Test task', ['sub-1']);
 

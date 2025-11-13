@@ -159,9 +159,7 @@ describe('AnthropicLLMProvider', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      mockCreate.mockRejectedValue(
-        new Error('API Error: Rate limit exceeded')
-      );
+      mockCreate.mockRejectedValue(new Error('API Error: Rate limit exceeded'));
 
       await expect(provider.generate('Test')).rejects.toThrow(
         'Anthropic API error: API Error: Rate limit exceeded'

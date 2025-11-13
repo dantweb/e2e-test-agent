@@ -30,20 +30,14 @@ describe('IterativeDecompositionEngine', () => {
       parseFile: jest.fn(),
     } as any;
 
-    engine = new IterativeDecompositionEngine(
-      mockLLM,
-      mockExtractor,
-      mockParser
-    );
+    engine = new IterativeDecompositionEngine(mockLLM, mockExtractor, mockParser);
   });
 
   describe('Single-Step Decomposition', () => {
     it('should decompose single step instruction', async () => {
       const instruction = 'Navigate to homepage';
 
-      mockExtractor.extractSimplified.mockResolvedValue(
-        '<html><body></body></html>'
-      );
+      mockExtractor.extractSimplified.mockResolvedValue('<html><body></body></html>');
       mockLLM.generate.mockResolvedValue({
         content: 'navigate url=https://shop.dev',
         usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
@@ -152,9 +146,7 @@ describe('IterativeDecompositionEngine', () => {
             new SelectorSpec('css', 'input[name="password"]')
           ),
         ])
-        .mockReturnValueOnce([
-          new OxtestCommand('click', {}, new SelectorSpec('text', 'Login')),
-        ]);
+        .mockReturnValueOnce([new OxtestCommand('click', {}, new SelectorSpec('text', 'Login'))]);
 
       const subtask = await engine.decomposeIteratively(instruction, 3);
 
@@ -191,9 +183,7 @@ describe('IterativeDecompositionEngine', () => {
         finishReason: 'stop',
       });
 
-      mockParser.parseContent.mockReturnValue([
-        new OxtestCommand('wait', { timeout: 1000 }),
-      ]);
+      mockParser.parseContent.mockReturnValue([new OxtestCommand('wait', { timeout: 1000 })]);
 
       const subtask = await engine.decomposeIteratively('Test', 2);
 
@@ -287,22 +277,16 @@ describe('IterativeDecompositionEngine', () => {
 
   describe('Error Handling', () => {
     it('should handle HTML extraction errors', async () => {
-      mockExtractor.extractSimplified.mockRejectedValue(
-        new Error('Page error')
-      );
+      mockExtractor.extractSimplified.mockRejectedValue(new Error('Page error'));
 
-      await expect(engine.decompose('Test')).rejects.toThrow(
-        'Decomposition failed'
-      );
+      await expect(engine.decompose('Test')).rejects.toThrow('Decomposition failed');
     });
 
     it('should handle LLM errors', async () => {
       mockExtractor.extractSimplified.mockResolvedValue('<html></html>');
       mockLLM.generate.mockRejectedValue(new Error('LLM error'));
 
-      await expect(engine.decompose('Test')).rejects.toThrow(
-        'Decomposition failed'
-      );
+      await expect(engine.decompose('Test')).rejects.toThrow('Decomposition failed');
     });
 
     it('should handle parser errors', async () => {
@@ -314,11 +298,11 @@ describe('IterativeDecompositionEngine', () => {
         finishReason: 'stop',
       });
 
-      mockParser.parseContent.mockImplementation(() => { throw new Error('Parse error'); });
+      mockParser.parseContent.mockImplementation(() => {
+        throw new Error('Parse error');
+      });
 
-      await expect(engine.decompose('Test')).rejects.toThrow(
-        'Decomposition failed'
-      );
+      await expect(engine.decompose('Test')).rejects.toThrow('Decomposition failed');
     });
   });
 

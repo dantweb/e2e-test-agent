@@ -1,5 +1,8 @@
 import { PredicateValidationEngine } from '../../../../src/application/orchestrators/PredicateValidationEngine';
-import { PlaywrightExecutor, ExecutionResult } from '../../../../src/infrastructure/executors/PlaywrightExecutor';
+import {
+  PlaywrightExecutor,
+  ExecutionResult,
+} from '../../../../src/infrastructure/executors/PlaywrightExecutor';
 import { SelectorSpec } from '../../../../src/domain/entities/SelectorSpec';
 
 describe('PredicateValidationEngine', () => {
@@ -235,7 +238,11 @@ describe('PredicateValidationEngine', () => {
 
       const results = await engine.validateAll([
         { type: 'exists', selector: new SelectorSpec('css', '.a'), description: 'A exists' },
-        { type: 'not_exists', selector: new SelectorSpec('css', '.b'), description: 'B not exists' },
+        {
+          type: 'not_exists',
+          selector: new SelectorSpec('css', '.b'),
+          description: 'B not exists',
+        },
         { type: 'url', pattern: '.*/page', description: 'URL check' },
       ]);
 
@@ -253,7 +260,12 @@ describe('PredicateValidationEngine', () => {
       const results = await engine.validateAll([
         { type: 'exists', selector: new SelectorSpec('css', '.a'), description: 'A' },
         { type: 'visible', selector: new SelectorSpec('css', '.b'), description: 'B' },
-        { type: 'text', selector: new SelectorSpec('css', '.c'), expected: 'text', description: 'C' },
+        {
+          type: 'text',
+          selector: new SelectorSpec('css', '.c'),
+          expected: 'text',
+          description: 'C',
+        },
       ]);
 
       expect(results).toHaveLength(3);

@@ -81,7 +81,7 @@ describe('HTMLExtractor', () => {
 
       expect(html).toContain('<div>Content</div>');
       expect(html).not.toContain('<script>');
-      expect(html).not.toContain("console.log");
+      expect(html).not.toContain('console.log');
     });
 
     it('should extract simplified HTML without styles', async () => {
