@@ -1,0 +1,199 @@
+/**
+ * Token types for Oxtest language parsing.
+ */
+export type TokenType = 'COMMAND' | 'SELECTOR' | 'PARAM';
+
+/**
+ * Represents a token in the Oxtest language.
+ */
+export interface Token {
+  readonly type: TokenType;
+  readonly value?: string;
+  readonly key?: string;
+  readonly strategy?: string;
+  readonly fallback?: Token;
+}
+
+/**
+ * Tokenizes Oxtest command lines into structured tokens.
+ *
+ * Handles:
+ * - Command names
+ * - Selector strategies (css, xpath, text, etc.)
+ * - Parameters (key=value pairs)
+ * - Fallback selectors
+ * - Quoted values with spaces
+ * - Comments and empty lines
+ */
+export class OxtestTokenizer {
+  private readonly selectorStrategies = [
+    'css',
+    'xpath',
+    'text',
+    'placeholder',
+    'label',
+    'role',
+    'testid',
+  ];
+
+  /**
+   * Tokenizes a single line of Oxtest code.
+   *
+   * @param line The line to tokenize
+   * @returns Array of tokens (empty for comments/blank lines)
+   */
+  public tokenize(line: string): Token[] {
+    const trimmed = line.trim();
+
+    // Skip empty lines and comments
+    if (!trimmed || trimmed.startsWith('#')) {
+      return [];
+    }
+
+    const tokens: Token[] = [];
+    const parts = this.splitLine(trimmed);
+
+    // First part is always the command
+    tokens.push({ type: 'COMMAND', value: parts[0] });
+
+    // Process remaining parts
+    let i = 1;
+    while (i < parts.length) {
+      const part = parts[i];
+
+      if (this.isSelectorToken(part)) {
+        const { token, consumed } = this.parseSelector(parts, i);
+        tokens.push(token);
+        i += consumed;
+      } else if (this.isParamToken(part)) {
+        tokens.push(this.parseParam(part));
+        i++;
+      } else {
+        // Unknown token, skip
+        i++;
+      }
+    }
+
+    return tokens;
+  }
+
+  /**
+   * Splits a line into parts, respecting quoted strings.
+   */
+  private splitLine(line: string): string[] {
+    const parts: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    let quoteChar = '';
+    let escaped = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (escaped) {
+        current += char;
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if ((char === '"' || char === "'")) {
+        if (!inQuotes) {
+          inQuotes = true;
+          quoteChar = char;
+        } else if (char === quoteChar) {
+          inQuotes = false;
+          quoteChar = '';
+        } else {
+          current += char;
+        }
+        continue;
+      }
+
+      if (char === ' ' && !inQuotes) {
+        if (current) {
+          parts.push(current);
+          current = '';
+        }
+      } else {
+        current += char;
+      }
+    }
+
+    if (current) {
+      parts.push(current);
+    }
+
+    return parts;
+  }
+
+  /**
+   * Checks if a part is a selector token (e.g., css=value).
+   */
+  private isSelectorToken(part: string): boolean {
+    return this.selectorStrategies.some(s => part.startsWith(`${s}=`));
+  }
+
+  /**
+   * Checks if a part is a parameter token (e.g., key=value).
+   */
+  private isParamToken(part: string): boolean {
+    return part.includes('=') && !this.isSelectorToken(part) && part !== 'fallback';
+  }
+
+  /**
+   * Parses a selector token with optional fallback.
+   * Returns the token and the number of parts consumed.
+   */
+  private parseSelector(
+    parts: string[],
+    index: number
+  ): { token: Token; consumed: number } {
+    const part = parts[index];
+    const [strategy, ...valueParts] = part.split('=');
+    const value = valueParts.join('='); // Handle = in selector values
+
+    let consumed = 1;
+    let fallbackToken: Token | undefined;
+
+    // Check for fallback
+    if (index + 1 < parts.length && parts[index + 1] === 'fallback') {
+      if (index + 2 < parts.length && this.isSelectorToken(parts[index + 2])) {
+        const fallbackResult = this.parseSelector(parts, index + 2);
+        fallbackToken = fallbackResult.token;
+        consumed += 2 + (fallbackResult.consumed - 1); // "fallback" keyword + selector + any nested fallbacks
+      }
+    }
+
+    const token: Token = {
+      type: 'SELECTOR',
+      strategy,
+      value,
+    };
+
+    if (fallbackToken) {
+      return {
+        token: { ...token, fallback: fallbackToken },
+        consumed,
+      };
+    }
+
+    return { token, consumed };
+  }
+
+  /**
+   * Parses a parameter token (key=value).
+   */
+  private parseParam(part: string): Token {
+    const [key, ...valueParts] = part.split('=');
+    return {
+      type: 'PARAM',
+      key,
+      value: valueParts.join('='), // Handle = in values
+    };
+  }
+}

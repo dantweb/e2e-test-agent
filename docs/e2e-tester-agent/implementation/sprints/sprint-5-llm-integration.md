@@ -8,6 +8,11 @@
 
 Implement LLM provider abstraction with support for OpenAI and Anthropic, including prompt engineering for iterative discovery and oxtest generation.
 
+
+## Important
+
+Use .env files to store API keys, urls and other secrets.
+
 ## Tasks
 
 ### Day 1: LLM Provider Interface
