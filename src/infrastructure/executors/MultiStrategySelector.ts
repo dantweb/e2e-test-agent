@@ -25,7 +25,7 @@ export class MultiStrategySelector {
       const firstLocator = primaryLocator.first();
       await firstLocator.waitFor({ timeout: 2000, state: 'attached' });
       return firstLocator;
-    } catch (error) {
+    } catch {
       // Try fallbacks
       if (selector.fallbacks && selector.fallbacks.length > 0) {
         for (const fallback of selector.fallbacks) {
@@ -41,9 +41,7 @@ export class MultiStrategySelector {
         }
       }
 
-      throw new Error(
-        `Element not found with selector: ${selector.strategy}=${selector.value}`
-      );
+      throw new Error(`Element not found with selector: ${selector.strategy}=${selector.value}`);
     }
   }
 

@@ -55,10 +55,7 @@ export class EnvironmentResolver {
    * Validates that all required environment variables are available.
    * Returns array of missing variable names (variables without defaults).
    */
-  public validateRequiredVars(
-    config: TestSuiteYaml,
-    envVars?: Record<string, string>
-  ): string[] {
+  public validateRequiredVars(config: TestSuiteYaml, envVars?: Record<string, string>): string[] {
     const mergedEnv = {
       ...config.env,
       ...process.env,

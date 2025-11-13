@@ -62,8 +62,5 @@ export interface ILLMProvider {
    * @param context - Optional context configuration
    * @returns AsyncGenerator yielding chunks of text
    */
-  streamGenerate(
-    prompt: string,
-    context?: LLMContext
-  ): AsyncGenerator<string, void, unknown>;
+  streamGenerate(prompt: string, context?: LLMContext): AsyncGenerator<string, void, unknown>;
 }

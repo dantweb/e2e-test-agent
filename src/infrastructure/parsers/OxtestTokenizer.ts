@@ -102,7 +102,7 @@ export class OxtestTokenizer {
         continue;
       }
 
-      if ((char === '"' || char === "'")) {
+      if (char === '"' || char === "'") {
         if (!inQuotes) {
           inQuotes = true;
           quoteChar = char;
@@ -150,10 +150,7 @@ export class OxtestTokenizer {
    * Parses a selector token with optional fallback.
    * Returns the token and the number of parts consumed.
    */
-  private parseSelector(
-    parts: string[],
-    index: number
-  ): { token: Token; consumed: number } {
+  private parseSelector(parts: string[], index: number): { token: Token; consumed: number } {
     const part = parts[index];
     const [strategy, ...valueParts] = part.split('=');
     const value = valueParts.join('='); // Handle = in selector values
@@ -205,24 +202,24 @@ export class OxtestTokenizer {
   private normalizeCommandName(command: string): string {
     // Map of snake_case to camelCase command names
     const commandMap: Record<string, string> = {
-      'assert_exists': 'assertVisible', // assert_exists checks if visible
-      'assert_not_exists': 'assertHidden', // assert_not_exists checks if hidden
-      'assert_visible': 'assertVisible',
-      'assert_hidden': 'assertHidden',
-      'assert_text': 'assertText',
-      'assert_value': 'assertValue',
-      'assert_enabled': 'assertEnabled',
-      'assert_disabled': 'assertDisabled',
-      'assert_checked': 'assertChecked',
-      'assert_unchecked': 'assertUnchecked',
-      'assert_url': 'assertUrl',
-      'assert_title': 'assertTitle',
-      'wait_for': 'waitForSelector',
-      'wait_navigation': 'wait', // wait_navigation maps to wait
-      'go_back': 'goBack',
-      'go_forward': 'goForward',
-      'select_option': 'selectOption',
-      'set_viewport': 'setViewport',
+      assert_exists: 'assertVisible', // assert_exists checks if visible
+      assert_not_exists: 'assertHidden', // assert_not_exists checks if hidden
+      assert_visible: 'assertVisible',
+      assert_hidden: 'assertHidden',
+      assert_text: 'assertText',
+      assert_value: 'assertValue',
+      assert_enabled: 'assertEnabled',
+      assert_disabled: 'assertDisabled',
+      assert_checked: 'assertChecked',
+      assert_unchecked: 'assertUnchecked',
+      assert_url: 'assertUrl',
+      assert_title: 'assertTitle',
+      wait_for: 'waitForSelector',
+      wait_navigation: 'wait', // wait_navigation maps to wait
+      go_back: 'goBack',
+      go_forward: 'goForward',
+      select_option: 'selectOption',
+      set_viewport: 'setViewport',
     };
 
     return commandMap[command] || command;

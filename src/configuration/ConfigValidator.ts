@@ -94,7 +94,9 @@ export class ConfigValidator {
     });
 
     config.subtasks.forEach(subtask => {
-      const hasAssertions = subtask.commands.some(cmd => isAssertionCommand(cmd.type as CommandType));
+      const hasAssertions = subtask.commands.some(cmd =>
+        isAssertionCommand(cmd.type as CommandType)
+      );
       if (!hasAssertions) {
         warnings.push({
           type: 'warning',
@@ -121,9 +123,7 @@ export class ConfigValidator {
     config.tasks.forEach(task => {
       task.subtasks.forEach(subtaskId => {
         if (!subtaskIds.has(subtaskId)) {
-          errors.push(
-            `Task "${task.id}" references non-existent subtask "${subtaskId}"`
-          );
+          errors.push(`Task "${task.id}" references non-existent subtask "${subtaskId}"`);
         }
       });
     });
@@ -140,9 +140,7 @@ export class ConfigValidator {
     config.subtasks.forEach(subtask => {
       subtask.commands.forEach((cmd, index) => {
         if (isInteractionCommand(cmd.type as CommandType) && !cmd.selector) {
-          errors.push(
-            `Subtask "${subtask.id}", command ${index}: ${cmd.type} requires a selector`
-          );
+          errors.push(`Subtask "${subtask.id}", command ${index}: ${cmd.type} requires a selector`);
         }
       });
     });
@@ -172,13 +170,7 @@ export class ConfigValidator {
       const setup = yamlTask.setup?.map(cmd => this.convertCommand(cmd));
       const teardown = yamlTask.teardown?.map(cmd => this.convertCommand(cmd));
 
-      const task = new Task(
-        yamlTask.id,
-        yamlTask.description,
-        yamlTask.subtasks,
-        setup,
-        teardown
-      );
+      const task = new Task(yamlTask.id, yamlTask.description, yamlTask.subtasks, setup, teardown);
       tasks.set(yamlTask.id, task);
     });
 

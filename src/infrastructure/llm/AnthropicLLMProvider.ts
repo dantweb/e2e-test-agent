@@ -37,8 +37,8 @@ export class AnthropicLLMProvider implements ILLMProvider {
 
       // Extract text content from response
       const textContent = response.content
-        .filter((c) => c.type === 'text')
-        .map((c) => (c as any).text)
+        .filter(c => c.type === 'text')
+        .map(c => (c as any).text)
         .join('');
 
       return {
@@ -46,8 +46,7 @@ export class AnthropicLLMProvider implements ILLMProvider {
         usage: {
           promptTokens: response.usage.input_tokens,
           completionTokens: response.usage.output_tokens,
-          totalTokens:
-            response.usage.input_tokens + response.usage.output_tokens,
+          totalTokens: response.usage.input_tokens + response.usage.output_tokens,
         },
         model: response.model,
         finishReason: (response.stop_reason as any) || 'stop',
@@ -98,8 +97,7 @@ export class AnthropicLLMProvider implements ILLMProvider {
     prompt: string,
     context?: LLMContext
   ): Array<{ role: 'user' | 'assistant'; content: string }> {
-    const messages: Array<{ role: 'user' | 'assistant'; content: string }> =
-      [];
+    const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
     // Add conversation history if provided
     if (context?.conversationHistory) {

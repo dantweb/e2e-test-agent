@@ -33,10 +33,7 @@ export class IterativeDecompositionEngine {
       const html = await this.htmlExtractor.extractSimplified();
 
       const systemPrompt = this.promptBuilder.buildSystemPrompt();
-      const userPrompt = this.promptBuilder.buildDiscoveryPrompt(
-        instruction,
-        html
-      );
+      const userPrompt = this.promptBuilder.buildDiscoveryPrompt(instruction, html);
 
       const response = await this.llmProvider.generate(userPrompt, {
         systemPrompt,
@@ -66,10 +63,7 @@ export class IterativeDecompositionEngine {
    * @param maxIterations Maximum number of iterations (default: 10)
    * @returns Subtask with all generated commands
    */
-  public async decomposeIteratively(
-    instruction: string,
-    maxIterations = 10
-  ): Promise<Subtask> {
+  public async decomposeIteratively(instruction: string, maxIterations = 10): Promise<Subtask> {
     const commands: OxtestCommand[] = [];
     const conversationHistory: Array<{
       role: 'user' | 'assistant';
@@ -85,11 +79,7 @@ export class IterativeDecompositionEngine {
         const prompt =
           conversationHistory.length === 0
             ? this.promptBuilder.buildDiscoveryPrompt(instruction, html)
-            : this.promptBuilder.buildRefinementPrompt(
-                instruction,
-                html,
-                conversationHistory
-              );
+            : this.promptBuilder.buildRefinementPrompt(instruction, html, conversationHistory);
 
         conversationHistory.push({ role: 'user', content: prompt });
 
@@ -146,9 +136,7 @@ export class IterativeDecompositionEngine {
   private isComplete(content: string): boolean {
     const normalized = content.toLowerCase().trim();
     return (
-      normalized === 'complete' ||
-      normalized === 'done' ||
-      normalized.startsWith('# complete')
+      normalized === 'complete' || normalized === 'done' || normalized.startsWith('# complete')
     );
   }
 

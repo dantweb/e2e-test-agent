@@ -40,7 +40,10 @@ export class PredicateValidationEngine {
    * @param description Validation description
    * @returns Validation result
    */
-  public async validateExists(selector: SelectorSpec, description: string): Promise<ValidationResult> {
+  public async validateExists(
+    selector: SelectorSpec,
+    description: string
+  ): Promise<ValidationResult> {
     return this.executeValidation({ type: 'exists', selector, description });
   }
 
@@ -50,7 +53,10 @@ export class PredicateValidationEngine {
    * @param description Validation description
    * @returns Validation result
    */
-  public async validateNotExists(selector: SelectorSpec, description: string): Promise<ValidationResult> {
+  public async validateNotExists(
+    selector: SelectorSpec,
+    description: string
+  ): Promise<ValidationResult> {
     return this.executeValidation({ type: 'not_exists', selector, description });
   }
 
@@ -60,7 +66,10 @@ export class PredicateValidationEngine {
    * @param description Validation description
    * @returns Validation result
    */
-  public async validateVisible(selector: SelectorSpec, description: string): Promise<ValidationResult> {
+  public async validateVisible(
+    selector: SelectorSpec,
+    description: string
+  ): Promise<ValidationResult> {
     return this.executeValidation({ type: 'visible', selector, description });
   }
 
@@ -109,7 +118,9 @@ export class PredicateValidationEngine {
    * @param validations Array of validation predicates
    * @returns Array of validation results
    */
-  public async validateAll(validations: readonly ValidationPredicate[]): Promise<ValidationResult[]> {
+  public async validateAll(
+    validations: readonly ValidationPredicate[]
+  ): Promise<ValidationResult[]> {
     const results: ValidationResult[] = [];
 
     for (const validation of validations) {

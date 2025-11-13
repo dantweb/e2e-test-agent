@@ -92,11 +92,7 @@ export class YamlParser {
       } else if (fsError.code === 'EACCES') {
         throw new YamlParseError(`Permission denied: ${filePath}`, filePath, fsError);
       } else {
-        throw new YamlParseError(
-          `Failed to read file: ${fsError.message}`,
-          filePath,
-          fsError
-        );
+        throw new YamlParseError(`Failed to read file: ${fsError.message}`, filePath, fsError);
       }
     }
   }

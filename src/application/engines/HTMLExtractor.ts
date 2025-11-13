@@ -25,15 +25,15 @@ export class HTMLExtractor {
       const clone = document.body.cloneNode(true) as HTMLElement;
 
       // Remove script tags
-      clone.querySelectorAll('script').forEach((el) => el.remove());
+      clone.querySelectorAll('script').forEach(el => el.remove());
 
       // Remove style tags
-      clone.querySelectorAll('style').forEach((el) => el.remove());
+      clone.querySelectorAll('style').forEach(el => el.remove());
 
       // Remove comments
-      const removeComments = (node: Node) => {
+      const removeComments = (node: Node): void => {
         const children = Array.from(node.childNodes);
-        children.forEach((child) => {
+        children.forEach(child => {
           if (child.nodeType === Node.COMMENT_NODE) {
             child.remove();
           } else if (child.nodeType === Node.ELEMENT_NODE) {
@@ -56,17 +56,13 @@ export class HTMLExtractor {
     return await this.page.evaluate(() => {
       const isVisible = (el: Element): boolean => {
         const style = window.getComputedStyle(el);
-        return (
-          style.display !== 'none' &&
-          style.visibility !== 'hidden' &&
-          style.opacity !== '0'
-        );
+        return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
       };
 
       const clone = document.body.cloneNode(true) as HTMLElement;
 
       // Remove hidden elements from clone
-      const removeHidden = (clonedNode: Element, originalNode: Element) => {
+      const removeHidden = (clonedNode: Element, originalNode: Element): void => {
         if (!isVisible(originalNode)) {
           clonedNode.remove();
           return;
@@ -95,14 +91,7 @@ export class HTMLExtractor {
    */
   public async extractInteractive(): Promise<string> {
     return await this.page.evaluate(() => {
-      const interactiveTags = new Set([
-        'BUTTON',
-        'A',
-        'INPUT',
-        'TEXTAREA',
-        'SELECT',
-        'FORM',
-      ]);
+      const interactiveTags = new Set(['BUTTON', 'A', 'INPUT', 'TEXTAREA', 'SELECT', 'FORM']);
 
       const isInteractive = (el: Element): boolean => {
         return (
@@ -116,7 +105,7 @@ export class HTMLExtractor {
       const extractInteractiveElements = (root: Element): Element[] => {
         const interactive: Element[] = [];
 
-        const traverse = (node: Element) => {
+        const traverse = (node: Element): void => {
           if (isInteractive(node)) {
             interactive.push(node);
           }
@@ -132,7 +121,7 @@ export class HTMLExtractor {
 
       // Create a simplified HTML structure
       const container = document.createElement('div');
-      elements.forEach((el) => {
+      elements.forEach(el => {
         container.appendChild(el.cloneNode(true));
       });
 
@@ -150,7 +139,7 @@ export class HTMLExtractor {
       const clone = document.body.cloneNode(true) as HTMLElement;
 
       // Remove non-semantic attributes to reduce noise
-      const cleanElement = (el: Element) => {
+      const cleanElement = (el: Element): void => {
         const semanticAttrs = [
           'id',
           'name',
@@ -168,7 +157,7 @@ export class HTMLExtractor {
         const attrs = Array.from(el.attributes);
 
         // Remove non-semantic attributes
-        attrs.forEach((attr) => {
+        attrs.forEach(attr => {
           if (!semanticAttrs.includes(attr.name)) {
             el.removeAttribute(attr.name);
           }

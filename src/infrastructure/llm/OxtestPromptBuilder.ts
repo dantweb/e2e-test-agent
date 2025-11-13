@@ -79,8 +79,8 @@ Generate the FIRST Oxtest command to begin this task. Return only the command, n
     history: Array<{ role: 'user' | 'assistant'; content: string }>
   ): string {
     const previousCommands = history
-      .filter((h) => h.role === 'assistant' && !h.content.includes('COMPLETE'))
-      .map((h) => h.content)
+      .filter(h => h.role === 'assistant' && !h.content.includes('COMPLETE'))
+      .map(h => h.content)
       .join('\n');
 
     return `Task: ${instruction}
