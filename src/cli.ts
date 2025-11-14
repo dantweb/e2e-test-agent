@@ -26,6 +26,12 @@ import * as path from 'path';
 import * as yaml from 'yaml';
 import { OpenAI } from 'openai';
 import { OpenAILLMProvider } from './infrastructure/llm/OpenAILLMProvider';
+import { OxtestParser } from './infrastructure/parsers/OxtestParser';
+import { PlaywrightExecutor } from './infrastructure/executors/PlaywrightExecutor';
+import { TestOrchestrator } from './application/orchestrators/TestOrchestrator';
+import { ReportAdapter } from './application/orchestrators/ReportAdapter';
+import { Subtask } from './domain/entities/Subtask';
+import { createReporter } from './presentation/reporters';
 import { version } from './index';
 
 /**
@@ -66,6 +72,12 @@ class CLI {
       .option('-o, --output <path>', 'Output directory for generated tests', '_generated')
       .option('--format <format>', 'Output format (oxtest|playwright)', 'oxtest')
       .option('--oxtest', 'Also generate .ox.test files alongside Playwright tests', false)
+      .option('--execute', 'Execute generated OXTest files after generation', false)
+      .option(
+        '--reporter <types>',
+        'Report formats (comma-separated: json,html,junit,console)',
+        'console'
+      )
       .option('--env <path>', 'Path to .env file (optional)')
       .option('--verbose', 'Enable verbose logging', false)
       .action(async options => {
@@ -78,6 +90,8 @@ class CLI {
     output: string;
     format: string;
     oxtest?: boolean;
+    execute?: boolean;
+    reporter?: string;
     env?: string;
     verbose?: boolean;
   }): Promise<void> {
@@ -176,6 +190,14 @@ class CLI {
       generatedFiles.forEach(file => {
         console.log(`   - ${file}`);
       });
+
+      // Execute generated OXTest files if --execute flag is set
+      if (options.execute && options.oxtest) {
+        console.log('\n🚀 Executing generated tests...');
+        await this.executeTests(options.output, options.reporter || 'console', options.verbose);
+      } else if (options.execute && !options.oxtest) {
+        console.log('\n⚠️  Warning: --execute requires --oxtest flag. Skipping execution.');
+      }
     } catch (error) {
       console.error('\n❌ Error:', (error as Error).message);
       if (options.verbose && error instanceof Error) {
@@ -379,6 +401,112 @@ Generate ONLY the OXTest commands, no explanations. Use # for comments.`;
     }
 
     return code;
+  }
+
+  private async executeTests(
+    outputDir: string,
+    reporterTypes: string,
+    verbose?: boolean
+  ): Promise<void> {
+    // Find all .ox.test files
+    const oxtestFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.ox.test'));
+
+    if (oxtestFiles.length === 0) {
+      console.log('⚠️  No .ox.test files found to execute');
+      return;
+    }
+
+    console.log(`📋 Found ${oxtestFiles.length} test file(s) to execute`);
+
+    // Initialize executor
+    const executor = new PlaywrightExecutor();
+    const parser = new OxtestParser();
+
+    try {
+      console.log('🌐 Launching browser...');
+      await executor.initialize();
+
+      // TestOrchestrator needs ExecutionContextManager
+      const { ExecutionContextManager } = await import(
+        './application/orchestrators/ExecutionContextManager'
+      );
+      const contextManager = new ExecutionContextManager();
+      const orchestrator = new TestOrchestrator(executor, contextManager);
+
+      // Execute each test file
+      for (const oxtestFile of oxtestFiles) {
+        const filePath = path.join(outputDir, oxtestFile);
+        const testName = oxtestFile.replace('.ox.test', '');
+
+        console.log(`\n🧪 Executing: ${testName}`);
+
+        try {
+          // Parse the .ox.test file
+          const commands = await parser.parseFile(filePath);
+
+          if (commands.length === 0) {
+            console.log(`   ⚠️  No commands found in ${oxtestFile}`);
+            continue;
+          }
+
+          // Create a single subtask with all commands
+          const subtask = new Subtask('main', testName, Array.from(commands));
+
+          // Execute the subtask
+          const startTime = new Date();
+          subtask.markInProgress();
+
+          const subtaskResult = await orchestrator.executeSubtask(subtask);
+
+          if (subtaskResult.success) {
+            subtask.markCompleted({
+              success: true,
+              output: `Executed ${subtaskResult.commandsExecuted} commands`,
+            });
+            console.log(`   ✅ Test passed (${subtaskResult.duration}ms)`);
+          } else {
+            subtask.markFailed(new Error(subtaskResult.error || 'Execution failed'));
+            console.log(`   ❌ Test failed: ${subtaskResult.error}`);
+          }
+
+          const endTime = new Date();
+
+          // Generate reports
+          const report = ReportAdapter.subtasksToExecutionReport(
+            testName,
+            [subtask],
+            startTime,
+            endTime
+          );
+
+          // Write reports for requested types
+          const reporters = reporterTypes.split(',').map(t => t.trim());
+          for (const reporterType of reporters) {
+            try {
+              const reporter = createReporter(reporterType);
+              const reportPath = path.join(outputDir, `${testName}.${reporter.fileExtension}`);
+
+              await reporter.writeToFile(report, reportPath);
+              console.log(`   📄 Report: ${testName}.${reporter.fileExtension}`);
+            } catch (error) {
+              console.error(
+                `   ⚠️  Failed to generate ${reporterType} report: ${(error as Error).message}`
+              );
+            }
+          }
+        } catch (error) {
+          console.error(`   ❌ Execution failed: ${(error as Error).message}`);
+          if (verbose) {
+            console.error('   Stack trace:', (error as Error).stack);
+          }
+        }
+      }
+
+      console.log('\n✅ Test execution completed!');
+    } finally {
+      // Cleanup
+      await executor.close();
+    }
   }
 
   public async execute(): Promise<void> {
