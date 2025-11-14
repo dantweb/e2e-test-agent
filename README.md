@@ -12,7 +12,43 @@ An intelligent end-to-end testing agent that uses LLMs to decompose high-level t
 - **Playwright Integration**: Leverages Playwright for reliable browser automation
 - **Predicate Validation**: Comprehensive assertion engine for test validation
 - **Execution Context**: Maintains state across test steps (cookies, variables, URLs)
+- **Automated Test Execution**: Execute generated OXTest files with real browsers
+- **Comprehensive Reporting**: Generate reports in multiple formats (HTML, JSON, JUnit, Console)
+- **End-to-End Workflow**: Single command from YAML specification to executed tests with reports
 - **Containerized**: Full Docker support for consistent execution across environments
+
+## 🚀 Complete Workflow
+
+The E2E Test Agent provides a complete workflow from natural language to executed tests:
+
+```bash
+# 1. First, set up your .env file with LLM API keys (see Configuration section below)
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY or ANTHROPIC_API_KEY
+
+# 2. Generate, execute, and create reports in one command
+npm run e2e-test-agent -- \
+  --env=.env \
+  --src=tests.yaml \
+  --output=_generated \
+  --oxtest \
+  --execute \
+  --reporter=html,json,junit,console
+```
+
+**What this does:**
+1. 📝 Reads your YAML specification (natural language test descriptions)
+2. 🤖 Uses LLM (OpenAI/Anthropic) to generate Playwright tests (.spec.ts) and OXTest files (.ox.test)
+3. 🌐 Launches a real browser and executes the generated tests
+4. 📊 Creates beautiful reports in multiple formats:
+   - **HTML**: Interactive dashboard with charts and screenshots
+   - **JSON**: Machine-readable format for CI/CD integration
+   - **JUnit XML**: Standard format for Jenkins, GitLab CI, GitHub Actions
+   - **Console**: Color-coded terminal output with progress tracking
+
+**Note**: The `--env=.env` flag connects your local `.env` file with LLM API keys. See the [Configuration](#configuration) section below for setup details.
+
+See [demo/README.md](demo/README.md) for complete examples and workflows.
 
 ## Quick Start
 
