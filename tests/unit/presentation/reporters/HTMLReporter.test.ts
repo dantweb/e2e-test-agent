@@ -165,7 +165,7 @@ describe('HTMLReporter', () => {
         failed: 0,
         blocked: 0,
         success: true,
-        subtaskReports: mockReport.subtaskReports.map((st) => ({
+        subtaskReports: mockReport.subtaskReports.map(st => ({
           ...st,
           status: TaskStatus.Completed,
           error: undefined,
@@ -402,11 +402,7 @@ describe('HTMLReporter', () => {
             id: 'sub-1',
             description: 'Multi-screenshot subtask',
             status: TaskStatus.Completed,
-            screenshots: [
-              '/tmp/screenshot1.png',
-              '/tmp/screenshot2.png',
-              '/tmp/screenshot3.png',
-            ],
+            screenshots: ['/tmp/screenshot1.png', '/tmp/screenshot2.png', '/tmp/screenshot3.png'],
           },
         ],
       };

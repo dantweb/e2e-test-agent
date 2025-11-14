@@ -465,7 +465,7 @@ export class HTMLReporter implements IReporter {
    */
   private generateSubtasks(report: ExecutionReport): string {
     const subtasksHtml = report.subtaskReports
-      .map((subtask) => this.generateSubtask(subtask))
+      .map(subtask => this.generateSubtask(subtask))
       .join('\n');
 
     return `<section class="subtasks">
@@ -484,9 +484,7 @@ export class HTMLReporter implements IReporter {
     const statusClass = this.getStatusClass(subtask.status);
     const statusLabel = this.getStatusLabel(subtask.status);
     const durationText = subtask.duration !== undefined ? `${subtask.duration}ms` : 'N/A';
-    const timestampText = subtask.timestamp
-      ? this.formatTimestamp(subtask.timestamp)
-      : 'N/A';
+    const timestampText = subtask.timestamp ? this.formatTimestamp(subtask.timestamp) : 'N/A';
 
     return `<details class="subtask">
     <summary class="subtask-header">
@@ -540,8 +538,8 @@ export class HTMLReporter implements IReporter {
     if (subtask.screenshots && subtask.screenshots.length > 0) {
       const screenshotsHtml = subtask.screenshots
         .map(
-          (screenshot) =>
-            `<a href="${this.escapeHtml(screenshot)}" class="screenshot" target="_blank">${this.escapeHtml(screenshot)}</a>`,
+          screenshot =>
+            `<a href="${this.escapeHtml(screenshot)}" class="screenshot" target="_blank">${this.escapeHtml(screenshot)}</a>`
         )
         .join('');
 

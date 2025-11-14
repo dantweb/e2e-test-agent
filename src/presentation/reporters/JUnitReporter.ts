@@ -39,7 +39,7 @@ export class JUnitReporter implements IReporter {
         `tests="${report.totalSubtasks}" ` +
         `failures="${failures}" ` +
         `time="${timeInSeconds}" ` +
-        `timestamp="${timestamp}">`,
+        `timestamp="${timestamp}">`
     );
 
     // Testcase elements
@@ -104,9 +104,7 @@ export class JUnitReporter implements IReporter {
       if (isFailed) {
         // Add failure element
         const errorMessage = subtask.error || 'Test failed';
-        lines.push(
-          `    <failure type="AssertionError" message="${this.escapeXml(errorMessage)}">`,
-        );
+        lines.push(`    <failure type="AssertionError" message="${this.escapeXml(errorMessage)}">`);
         lines.push(`${this.escapeXml(errorMessage)}`);
         lines.push('    </failure>');
       } else if (isSkipped) {
