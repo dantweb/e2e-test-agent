@@ -55,6 +55,51 @@ jobs:
           path: dist/
           retention-days: 30
 
+  docker-build-and-test:
+    name: Docker Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test Docker image
+        run: |
+          cp .dockerignore .dockerignore.prod
+          cp .dockerignore.test .dockerignore
+          docker build -f Dockerfile.test -t dantweb/e2e-test-agent:test .
+          mv .dockerignore.prod .dockerignore
+
+      - name: Run tests in Docker container
+        run: docker run --rm dantweb/e2e-test-agent:test npm test
+
+      - name: Build production Docker image
+        run: docker build -t dantweb/e2e-test-agent:ci .
+
+      - name: Verify Docker run command works
+        run: |
+          docker run --rm \
+            -v $(pwd):/workspace \
+            dantweb/e2e-test-agent:ci \
+            --help
+
+      - name: Login to Docker Hub
+        if: github.ref == 'refs/heads/master'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push to Docker Hub
+        if: github.ref == 'refs/heads/master'
+        run: |
+          docker tag dantweb/e2e-test-agent:ci dantweb/e2e-test-agent:latest
+          docker tag dantweb/e2e-test-agent:ci dantweb/e2e-test-agent:${GITHUB_SHA::8}
+          docker push dantweb/e2e-test-agent:latest
+          docker push dantweb/e2e-test-agent:${GITHUB_SHA::8}
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest

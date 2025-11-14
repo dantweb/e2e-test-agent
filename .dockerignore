@@ -1,0 +1,63 @@
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build output
+dist/
+
+# Test coverage
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# Test files
+tests/
+*.test.ts
+jest.config.js
+
+# Environment files (should be mounted)
+.env
+.env.local
+.env.test
+
+# Logs
+logs/
+*.log
+
+# Reports (generated at runtime)
+reports/
+_generated/
+
+# CI/CD
+.husky/
+ci-status.sh
+test-ci-lint.sh
+
+# Lint/Format config
+.eslintrc.js
+.eslintrc.js.bak
+eslint.config.js
+.prettierrc
+
+# Claude
+.claude/

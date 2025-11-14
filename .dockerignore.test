@@ -1,0 +1,46 @@
+# Minimal dockerignore for test builds
+# Only exclude things that are absolutely not needed
+
+# Node modules (will be installed)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build output (will be generated)
+dist/
+
+# Test coverage (will be generated)
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Environment files (should be mounted)
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+
+# Reports (generated at runtime)
+reports/
+_generated/
+
+# CI/CD
+.husky/
+
+# Claude
+.claude/
