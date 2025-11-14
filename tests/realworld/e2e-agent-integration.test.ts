@@ -78,9 +78,14 @@ describe('E2E Test Agent - Real World Integration', () => {
   let apiUrl: string;
 
   beforeAll(() => {
-    // Load .env.test file
-    testEnv = loadEnvFile(envFile);
-    console.log('📝 Loaded environment from .env.test:', Object.keys(testEnv));
+    // Load .env.test file (if it exists)
+    if (fs.existsSync(envFile)) {
+      testEnv = loadEnvFile(envFile);
+      console.log('📝 Loaded environment from .env.test:', Object.keys(testEnv));
+    } else {
+      console.log('📝 .env.test not found - using environment variables');
+      testEnv = {};
+    }
 
     // Get API key from .env.test or fallback to process.env
     apiKey = testEnv.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
@@ -93,6 +98,15 @@ describe('E2E Test Agent - Real World Integration', () => {
     } else {
       console.log(`✅ Using API: ${apiUrl}`);
       console.log(`✅ API key loaded (length: ${apiKey.length})`);
+
+      // Validate API key format (OpenAI keys start with sk- and are 51 chars long)
+      if (!apiKey.startsWith('sk-') || apiKey.length < 40) {
+        console.error('❌ Invalid OpenAI API key format detected');
+        console.error('   Expected: sk-... (at least 40 characters)');
+        console.error(`   Received: ${apiKey.substring(0, 10)}... (${apiKey.length} characters)`);
+        console.error('   Please update OPENAI_API_KEY in GitHub secrets or .env.test');
+        apiKey = undefined; // Invalidate to skip tests
+      }
     }
 
     // Clean output directory
@@ -113,12 +127,15 @@ describe('E2E Test Agent - Real World Integration', () => {
   describe('Full E2E Pipeline', () => {
     it('should verify test files exist', () => {
       if (!apiKey) {
-        console.log('Skipping test - no API key');
+        console.log('⚠️  Skipping test - no API key provided');
         return;
       }
 
       expect(fs.existsSync(yamlFile)).toBe(true);
-      expect(fs.existsSync(envFile)).toBe(true);
+      // .env.test is optional - can use environment variables instead
+      if (!fs.existsSync(envFile)) {
+        console.log('⚠️  .env.test not found - using environment variables');
+      }
       console.log('✅ Test specification files exist');
     });
 
