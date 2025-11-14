@@ -8,9 +8,16 @@
  * Jobs within a test are executed sequentially in the same browser session.
  *
  * Output formats:
- * - .spec.ts: Standard Playwright test files (default)
- * - .ox.test: Intermediate format using OXTest commands (for debugging)
+ * - .spec.ts: Standard Playwright test files (always generated)
+ * - .ox.test: OXTest DSL format (generated with --oxtest flag)
+ *
+ * OXTest is a simple domain-specific language for E2E tests with commands like:
+ *   navigate, click, type, assert_visible, assert_text, etc.
  *   Commands defined in: src/domain/enums/CommandType.ts
+ *
+ * Usage:
+ *   e2e-test-agent --src=tests.yaml --output=_generated
+ *   e2e-test-agent --src=tests.yaml --output=_generated --oxtest
  */
 
 import { Command } from 'commander';
@@ -58,6 +65,7 @@ class CLI {
       .option('-s, --src <path>', 'Path to YAML test specification file')
       .option('-o, --output <path>', 'Output directory for generated tests', '_generated')
       .option('--format <format>', 'Output format (oxtest|playwright)', 'oxtest')
+      .option('--oxtest', 'Also generate .ox.test files alongside Playwright tests', false)
       .option('--env <path>', 'Path to .env file (optional)')
       .option('--verbose', 'Enable verbose logging', false)
       .action(async options => {
@@ -69,6 +77,7 @@ class CLI {
     src?: string;
     output: string;
     format: string;
+    oxtest?: boolean;
     env?: string;
     verbose?: boolean;
   }): Promise<void> {
@@ -136,13 +145,27 @@ class CLI {
           testSpec.url
         );
 
-        // Generate single test file
+        // Generate Playwright test file
         const testFileName = `${testName}.spec.ts`;
         const testFilePath = path.join(options.output, testFileName);
-
         fs.writeFileSync(testFilePath, testCode, 'utf-8');
-
         console.log(`   📄 Created: ${testFileName}`);
+
+        // Generate OXTest file if --oxtest flag is set
+        if (options.oxtest) {
+          console.log('   🧠 Generating OXTest format...');
+          const oxtestCode = await this.generateOXTestWithLLM(
+            llmProvider,
+            testName,
+            testSpec.jobs,
+            testSpec.url
+          );
+
+          const oxtestFileName = `${testName}.ox.test`;
+          const oxtestFilePath = path.join(options.output, oxtestFileName);
+          fs.writeFileSync(oxtestFilePath, oxtestCode, 'utf-8');
+          console.log(`   📄 Created: ${oxtestFileName}`);
+        }
       }
 
       console.log('\n✅ Test generation completed successfully!');
@@ -263,6 +286,96 @@ Generate ONLY the complete test code, no explanations. The code should be produc
       code = code.replace(/^```(typescript|ts)\n/, '').replace(/\n```$/, '');
     } else if (code.startsWith('```')) {
       code = code.replace(/^```\n/, '').replace(/\n```$/, '');
+    }
+
+    return code;
+  }
+
+  private async generateOXTestWithLLM(
+    llmProvider: OpenAILLMProvider,
+    testName: string,
+    jobs: JobSpec[],
+    baseUrl: string
+  ): Promise<string> {
+    // Build the test flow description
+    const jobDescriptions = jobs
+      .map((job, index) => {
+        const acceptance = job.acceptance ? job.acceptance.join('\n     - ') : 'None';
+        return `${index + 1}. ${job.name}: ${job.prompt}
+   Acceptance Criteria:
+     - ${acceptance}`;
+      })
+      .join('\n\n');
+
+    const prompt = `Generate an OXTest format test file for the following test flow.
+
+OXTest is a simple domain-specific language for E2E tests with these commands:
+
+Commands:
+- navigate url=<url>
+- click <selector>
+- type <selector> value=<value>
+- select <selector> value=<value>
+- wait timeout=<ms>
+- wait_navigation timeout=<ms>
+- hover <selector>
+- press key=<key>
+- screenshot path=<path>
+- assert_visible <selector>
+- assert_text <selector> text=<text>
+- assert_value <selector> value=<value>
+- assert_url pattern=<regex>
+- assert_exists <selector>
+- assert_not_exists <selector>
+
+Selector formats:
+- css=<css-selector>
+- xpath=<xpath>
+- text="<text>"
+- role=<role>
+- testid=<test-id>
+- Multiple strategies: click css=.button fallback=text="Submit"
+
+Test Name: ${testName}
+Base URL: ${baseUrl}
+
+Sequential Test Flow:
+${jobDescriptions}
+
+Requirements:
+1. Use OXTest command syntax (one command per line)
+2. Start with a comment: # ${testName} - Generated from YAML
+3. Use navigate url=${baseUrl} to start
+4. Use CSS selectors primarily, with text fallbacks
+5. Add wait_navigation after actions that trigger page loads
+6. Add assertions based on acceptance criteria
+7. Use environment variables for dynamic values: \${VAR_NAME}
+8. Add comments for each major step (# Step: <step-name>)
+9. Keep commands atomic and clear
+10. Use wait commands when elements need time to appear
+
+Example format:
+# Login to shop - Generated from YAML
+navigate url=https://example.com
+type css=input[name="username"] value=\${TEST_USERNAME}
+type css=input[type="password"] value=\${TEST_PASSWORD}
+click text="Login" fallback=css=button[type="submit"]
+wait_navigation timeout=5000
+assert_url pattern=.*/home
+assert_not_exists css=.error
+
+Generate ONLY the OXTest commands, no explanations. Use # for comments.`;
+
+    const response = await llmProvider.generate(prompt, {
+      model: process.env.OPENAI_MODEL || 'gpt-4o',
+      temperature: 0.2,
+      maxTokens: 2000,
+    });
+
+    // Clean up the response (remove markdown code blocks if present)
+    let code = response.content.trim();
+    if (code.startsWith('```oxtest') || code.startsWith('```')) {
+      code = code.replace(/^```[a-z]*\n/, '').replace(/\n```$/, '');
     }
 
     return code;
