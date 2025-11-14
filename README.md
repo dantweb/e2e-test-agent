@@ -13,15 +13,24 @@ An intelligent end-to-end testing agent that uses LLMs to decompose high-level t
 
 ## Quick Start
 
+For detailed setup instructions, see [Getting Started Guide](./docs/e2e-tester-agent/GETTING_STARTED.md).
+
 ### Installation
 
 ```bash
 npm install
+npx playwright install chromium
 ```
 
 ### Configuration
 
-Create a `.env` file:
+Copy and edit the environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your API keys:
 
 ```env
 # LLM Provider (openai or anthropic)
@@ -142,15 +151,23 @@ npm test
 - **ESLint**: TypeScript strict mode with prettier integration
 - **Prettier**: Consistent code formatting
 - **Husky**: Git hooks for pre-commit checks
-- **Jest**: Testing framework with 339 passing tests
+- **Jest**: Testing framework with 353 passing tests
 
 ### Current Status
 
-- ✅ 339/339 tests passing
+- ✅ 353/353 tests passing
 - ✅ 0 ESLint errors (6 non-blocking warnings)
 - ✅ Full CI/CD pipeline configured
 - ✅ Node 22 compatibility
 - ✅ Codecov integration (optional)
+
+## Documentation
+
+- **[Getting Started Guide](./docs/e2e-tester-agent/GETTING_STARTED.md)** - Comprehensive setup and usage guide
+- **[Changelog](./docs/e2e-tester-agent/CHANGELOG.md)** - Version history and release notes
+- **[Project Completion Summary](./docs/e2e-tester-agent/PROJECT_COMPLETION_SUMMARY.md)** - MVP completion status
+- **[Architecture Documentation](./docs/e2e-tester-agent/README.md)** - System design and architecture
+- **[Implementation Progress](./docs/e2e-tester-agent/implementation/implementation_status.md)** - Sprint-by-sprint progress
 
 ## Contributing
 
