@@ -115,9 +115,7 @@ export class Subtask {
     this.result = {
       ...result,
       success: true,
-      duration: this.executionStartTime
-        ? Date.now() - this.executionStartTime
-        : undefined,
+      duration: this.executionStartTime ? Date.now() - this.executionStartTime : undefined,
       timestamp: new Date(),
     };
   }
@@ -136,9 +134,7 @@ export class Subtask {
     this.result = {
       success: false,
       error,
-      duration: this.executionStartTime
-        ? Date.now() - this.executionStartTime
-        : undefined,
+      duration: this.executionStartTime ? Date.now() - this.executionStartTime : undefined,
       timestamp: new Date(),
       ...result,
     };

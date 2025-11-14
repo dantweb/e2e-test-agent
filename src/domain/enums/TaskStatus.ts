@@ -39,17 +39,17 @@ export enum TaskStatus {
 export const VALID_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   [TaskStatus.Pending]: [
     TaskStatus.InProgress, // Start execution
-    TaskStatus.Blocked,    // Dependencies not met
+    TaskStatus.Blocked, // Dependencies not met
   ],
   [TaskStatus.InProgress]: [
-    TaskStatus.Completed,  // Successful execution
-    TaskStatus.Failed,     // Execution error
+    TaskStatus.Completed, // Successful execution
+    TaskStatus.Failed, // Execution error
   ],
   [TaskStatus.Blocked]: [
     TaskStatus.InProgress, // Retry after dependencies satisfied
   ],
   [TaskStatus.Completed]: [], // Terminal state
-  [TaskStatus.Failed]: [],    // Terminal state
+  [TaskStatus.Failed]: [], // Terminal state
 };
 
 /**

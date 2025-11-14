@@ -128,12 +128,18 @@ export class ConsoleReporter implements IReporter {
     const lines: string[] = [];
     lines.push(this.colorize('Summary:', COLORS.bright));
     lines.push(this.separator('─', 60));
-    lines.push(`Status:   ${this.colorize(`${statusIcon} ${statusText}`, statusColor + COLORS.bright)}`);
+    lines.push(
+      `Status:   ${this.colorize(`${statusIcon} ${statusText}`, statusColor + COLORS.bright)}`
+    );
     lines.push(`Duration: ${this.colorize(`${report.duration}ms`, COLORS.cyan)}`);
     lines.push(`Total:    ${report.totalSubtasks}`);
     lines.push(`Passed:   ${this.colorize(`${report.passed}`, COLORS.green)}`);
-    lines.push(`Failed:   ${this.colorize(`${report.failed}`, report.failed > 0 ? COLORS.red : COLORS.gray)}`);
-    lines.push(`Blocked:  ${this.colorize(`${report.blocked}`, report.blocked > 0 ? COLORS.yellow : COLORS.gray)}`);
+    lines.push(
+      `Failed:   ${this.colorize(`${report.failed}`, report.failed > 0 ? COLORS.red : COLORS.gray)}`
+    );
+    lines.push(
+      `Blocked:  ${this.colorize(`${report.blocked}`, report.blocked > 0 ? COLORS.yellow : COLORS.gray)}`
+    );
 
     return lines.join('\n');
   }
@@ -209,7 +215,6 @@ export class ConsoleReporter implements IReporter {
    * Strip ANSI color codes from text
    */
   private stripAnsiCodes(text: string): string {
-    // eslint-disable-next-line no-control-regex
     return text.replace(/\x1b\[[0-9;]*m/g, '');
   }
 }
