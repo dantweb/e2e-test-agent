@@ -86,7 +86,7 @@ jobs:
             --help
 
       - name: Login to Docker Hub
-        if: github.ref == 'refs/heads/master' && secrets.DOCKER_USERNAME != ''
+        if: github.ref == 'refs/heads/master'
         uses: docker/login-action@v3
         continue-on-error: true
         with:
@@ -94,17 +94,18 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Push to Docker Hub
-        if: github.ref == 'refs/heads/master' && secrets.DOCKER_USERNAME != ''
+        if: github.ref == 'refs/heads/master'
         continue-on-error: true
         run: |
-          docker tag dantweb/e2e-test-agent:ci dantweb/e2e-test-agent:latest
-          docker tag dantweb/e2e-test-agent:ci dantweb/e2e-test-agent:${GITHUB_SHA::8}
-          docker push dantweb/e2e-test-agent:latest
-          docker push dantweb/e2e-test-agent:${GITHUB_SHA::8}
-
-      - name: Docker Hub not configured
-        if: github.ref == 'refs/heads/master' && secrets.DOCKER_USERNAME == ''
-        run: echo "ℹ️ Docker Hub credentials not configured - skipping image push"
+          if [ -n "${{ secrets.DOCKER_USERNAME }}" ]; then
+            docker tag dantweb/e2e-test-agent:ci dantweb/e2e-test-agent:latest
+            docker tag dantweb/e2e-test-agent:ci dantweb/e2e-test-agent:${GITHUB_SHA::8}
+            docker push dantweb/e2e-test-agent:latest
+            docker push dantweb/e2e-test-agent:${GITHUB_SHA::8}
+            echo "✅ Images pushed to Docker Hub"
+          else
+            echo "ℹ️ Docker Hub credentials not configured - skipping image push"
+          fi
 
   security-scan:
     name: Security Scan
