@@ -22,6 +22,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run linter
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type check
+        run: npm run type-check
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -77,19 +86,25 @@ jobs:
             --help
 
       - name: Login to Docker Hub
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && secrets.DOCKER_USERNAME != ''
         uses: docker/login-action@v3
+        continue-on-error: true
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Push to Docker Hub
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && secrets.DOCKER_USERNAME != ''
+        continue-on-error: true
         run: |
           docker tag dantweb/e2e-test-agent:ci dantweb/e2e-test-agent:latest
           docker tag dantweb/e2e-test-agent:ci dantweb/e2e-test-agent:${GITHUB_SHA::8}
           docker push dantweb/e2e-test-agent:latest
           docker push dantweb/e2e-test-agent:${GITHUB_SHA::8}
+
+      - name: Docker Hub not configured
+        if: github.ref == 'refs/heads/master' && secrets.DOCKER_USERNAME == ''
+        run: echo "ℹ️ Docker Hub credentials not configured - skipping image push"
 
   security-scan:
     name: Security Scan
