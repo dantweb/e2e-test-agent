@@ -182,11 +182,7 @@ export class DirectedAcyclicGraph<T> implements ITaskGraph<T> {
    * @param recursionStack - Set of nodes in current DFS path
    * @returns true if cycle detected
    */
-  private hasCycleDFS(
-    nodeId: string,
-    visited: Set<string>,
-    recursionStack: Set<string>
-  ): boolean {
+  private hasCycleDFS(nodeId: string, visited: Set<string>, recursionStack: Set<string>): boolean {
     // Back edge detected - cycle exists
     if (recursionStack.has(nodeId)) {
       return true;

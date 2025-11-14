@@ -27,8 +27,7 @@ export class ValueValidation implements ValidationPredicate {
    */
   constructor(selector: string, expected: string, description?: string) {
     this.params = Object.freeze({ selector, expected });
-    this.description =
-      description || `Element ${selector} should have value "${expected}"`;
+    this.description = description || `Element ${selector} should have value "${expected}"`;
   }
 
   /**

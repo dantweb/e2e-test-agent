@@ -226,7 +226,7 @@ describe('Subtask', () => {
         subtask.markCompleted({
           success: true,
           output: 'Test passed',
-          screenshots: ['/tmp/screenshot.png']
+          screenshots: ['/tmp/screenshot.png'],
         });
 
         expect(subtask.result).toBeDefined();
@@ -284,7 +284,7 @@ describe('Subtask', () => {
         subtask.markInProgress();
         subtask.markFailed(new Error('Failed'), {
           output: 'Failed at step 2',
-          screenshots: ['/tmp/error.png']
+          screenshots: ['/tmp/error.png'],
         });
 
         expect(subtask.result?.output).toBe('Failed at step 2');
