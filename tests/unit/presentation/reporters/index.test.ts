@@ -66,7 +66,7 @@ describe('Reporters Index', () => {
 
     it('should throw error for unknown reporter', () => {
       expect(() => createReporter('unknown')).toThrow(
-        'Unknown reporter: unknown. Available reporters: json, console, junit, html',
+        'Unknown reporter: unknown. Available reporters: json, console, junit, html'
       );
     });
 

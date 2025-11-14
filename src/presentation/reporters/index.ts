@@ -30,17 +30,10 @@ export function createReporter(name: string): IReporter {
     case 'html':
       return new HTMLReporter();
     default:
-      throw new Error(
-        `Unknown reporter: ${name}. Available reporters: json, console, junit, html`,
-      );
+      throw new Error(`Unknown reporter: ${name}. Available reporters: json, console, junit, html`);
   }
 }
 
 export function getAllReporters(): IReporter[] {
-  return [
-    new JSONReporter(),
-    new ConsoleReporter(),
-    new JUnitReporter(),
-    new HTMLReporter(),
-  ];
+  return [new JSONReporter(), new ConsoleReporter(), new JUnitReporter(), new HTMLReporter()];
 }
