@@ -18,7 +18,8 @@ module.exports = {
     }
   },
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
-  setupFilesAfterEnv: ['jest-extended/all'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts', 'jest-extended/all'],
   verbose: true,
-  testTimeout: 10000
+  testTimeout: 10000,
+  maxWorkers: 4
 };
