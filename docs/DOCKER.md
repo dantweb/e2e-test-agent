@@ -199,18 +199,61 @@ environment:
 
 ### Available Variables
 
+#### LLM Provider Configuration
+
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `LLM_PROVIDER` | LLM provider (openai or anthropic) | `openai` |
+
+#### OpenAI Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
 | `OPENAI_API_KEY` | OpenAI API key | - |
+| `OPENAI_API_URL` | OpenAI API base URL | `https://api.openai.com/v1` |
 | `OPENAI_MODEL` | OpenAI model to use | `gpt-4o` |
+| `OPENAI_MAX_TOKENS` | Maximum tokens for completion | `4000` |
+| `OPENAI_TEMPERATURE` | Temperature for generation | `0.7` |
+
+#### Anthropic Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
 | `ANTHROPIC_API_KEY` | Anthropic API key | - |
+| `ANTHROPIC_API_URL` | Anthropic API base URL | `https://api.anthropic.com/v1` |
 | `ANTHROPIC_MODEL` | Anthropic model to use | `claude-3-5-sonnet-20241022` |
+| `ANTHROPIC_MAX_TOKENS` | Maximum tokens for completion | `4000` |
+| `ANTHROPIC_TEMPERATURE` | Temperature for generation | `0.7` |
+
+#### Playwright Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
 | `HEADLESS` | Run browser in headless mode | `true` |
 | `BROWSER` | Browser to use (chromium/firefox/webkit) | `chromium` |
 | `TIMEOUT` | Default timeout in ms | `30000` |
-| `BASE_URL` | Base URL for tests | - |
+| `SCREENSHOT_ON_FAILURE` | Take screenshot on test failure | `true` |
+
+#### Test Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BASE_URL` | Base URL for tests | `http://localhost:3000` |
+| `TEST_PARALLELISM` | Number of parallel tests | `1` |
+
+#### Logging Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
 | `LOG_LEVEL` | Logging level (debug/info/warn/error) | `info` |
+| `LOG_FILE` | Path to log file | `./logs/e2e-agent.log` |
+
+#### Report Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `REPORT_FORMAT` | Report format (html/json) | `html` |
+| `REPORT_OUTPUT_DIR` | Report output directory | `./reports` |
 
 ## Volume Mounts
 
