@@ -56,6 +56,9 @@ See [demo/README.md](demo/README.md) for complete examples and workflows.
 
 ## Quick Start
 
+For detailed setup instructions, see [Getting Started Guide](./docs/e2e-tester-agent/GETTING_STARTED.md).
+
+### Installation
 ### Running with Docker (Recommended)
 
 The easiest way to run E2E Test Agent is using Docker:
@@ -363,6 +366,14 @@ npm test
 - ✅ Codecov integration (optional)
 - ✅ 14/19 core sprints complete (74%)
 - ✅ Advanced features: Task Graphs, State Machines, Multi-Format Reporting
+
+## Documentation
+
+- **[Getting Started Guide](./docs/e2e-tester-agent/GETTING_STARTED.md)** - Comprehensive setup and usage guide
+- **[Changelog](./docs/e2e-tester-agent/CHANGELOG.md)** - Version history and release notes
+- **[Project Completion Summary](./docs/e2e-tester-agent/PROJECT_COMPLETION_SUMMARY.md)** - MVP completion status
+- **[Architecture Documentation](./docs/e2e-tester-agent/README.md)** - System design and architecture
+- **[Implementation Progress](./docs/e2e-tester-agent/implementation/implementation_status.md)** - Sprint-by-sprint progress
 
 ## Documentation
 
