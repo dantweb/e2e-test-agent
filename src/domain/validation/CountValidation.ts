@@ -27,8 +27,7 @@ export class CountValidation implements ValidationPredicate {
    */
   constructor(selector: string, expected: number, description?: string) {
     this.params = Object.freeze({ selector, expected });
-    this.description =
-      description || `Element ${selector} count should be ${expected}`;
+    this.description = description || `Element ${selector} count should be ${expected}`;
   }
 
   /**

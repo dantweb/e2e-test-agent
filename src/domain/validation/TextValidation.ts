@@ -27,8 +27,7 @@ export class TextValidation implements ValidationPredicate {
    */
   constructor(selector: string, expected: string, description?: string) {
     this.params = Object.freeze({ selector, expected });
-    this.description =
-      description || `Element ${selector} should contain text "${expected}"`;
+    this.description = description || `Element ${selector} should contain text "${expected}"`;
   }
 
   /**

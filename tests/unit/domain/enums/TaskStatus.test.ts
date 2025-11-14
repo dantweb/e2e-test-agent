@@ -5,7 +5,11 @@
  * Tests state machine validation and transitions
  */
 
-import { TaskStatus, VALID_TRANSITIONS, isValidTransition } from '../../../../src/domain/enums/TaskStatus';
+import {
+  TaskStatus,
+  VALID_TRANSITIONS,
+  isValidTransition,
+} from '../../../../src/domain/enums/TaskStatus';
 
 describe('TaskStatus', () => {
   describe('enum values', () => {
