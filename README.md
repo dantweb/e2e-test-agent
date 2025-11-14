@@ -2,6 +2,8 @@
 
 An intelligent end-to-end testing agent that uses LLMs to decompose high-level test scenarios into executable Playwright commands.
 
+**🐳 This is a containerized application** - Docker is the recommended way to run it.
+
 ## Features
 
 - **LLM-Powered Test Generation**: Uses OpenAI or Anthropic LLMs to understand natural language test descriptions
@@ -10,12 +12,48 @@ An intelligent end-to-end testing agent that uses LLMs to decompose high-level t
 - **Playwright Integration**: Leverages Playwright for reliable browser automation
 - **Predicate Validation**: Comprehensive assertion engine for test validation
 - **Execution Context**: Maintains state across test steps (cookies, variables, URLs)
+- **Containerized**: Full Docker support for consistent execution across environments
 
 ## Quick Start
 
-For detailed setup instructions, see [Getting Started Guide](./docs/e2e-tester-agent/GETTING_STARTED.md).
+### Running with Docker (Recommended)
 
-### Installation
+The easiest way to run E2E Test Agent is using Docker:
+
+```bash
+# Pull the image (when published)
+docker pull dantweb/e2e-test-agent:latest
+
+# Or build it locally
+docker build -t dantweb/e2e-test-agent:latest .
+
+# Run tests
+docker run --rm \
+  -v $(pwd):/workspace \
+  dantweb/e2e-test-agent:latest \
+  --env=path_to_file.env \
+  --src=path_to_file.yaml \
+  --output=_generated
+```
+
+#### Using Docker Compose
+
+For integration with other services:
+
+```bash
+# Run with docker-compose
+docker compose run --rm e2e-agent --env=.env --src=test.yaml --output=_generated
+
+# Or build and run
+docker compose build e2e-agent
+docker compose run --rm e2e-agent --help
+```
+
+See [Docker Documentation](./docs/DOCKER.md) for detailed Docker usage instructions.
+
+### Local Installation (Development)
+
+For development without Docker:
 
 ```bash
 npm install

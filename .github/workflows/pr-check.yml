@@ -117,3 +117,34 @@ jobs:
           name: dist
           path: dist/
           retention-days: 7
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test Docker image
+        run: |
+          cp .dockerignore .dockerignore.prod
+          cp .dockerignore.test .dockerignore
+          docker build -f Dockerfile.test -t dantweb/e2e-test-agent:test-pr-${{ github.event.pull_request.number }} .
+          mv .dockerignore.prod .dockerignore
+
+      - name: Run tests in Docker container
+        run: docker run --rm dantweb/e2e-test-agent:test-pr-${{ github.event.pull_request.number }} npm run test:unit
+
+      - name: Build production Docker image
+        run: docker build -t dantweb/e2e-test-agent:pr-${{ github.event.pull_request.number }} .
+
+      - name: Verify Docker run command
+        run: |
+          docker run --rm \
+            -v $(pwd):/workspace \
+            dantweb/e2e-test-agent:pr-${{ github.event.pull_request.number }} \
+            --help
