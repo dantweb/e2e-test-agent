@@ -267,8 +267,12 @@ describe('JSONReporter', () => {
     });
 
     it('should throw error for invalid path', async () => {
-      // Try to write to root directory (permission denied)
-      const invalidPath = '/invalid/path/that/does/not/exist/report.json';
+      // Create a file, then try to create a directory with the same name (will fail)
+      const filePath = path.join(tempDir, 'blocking-file');
+      await fs.writeFile(filePath, 'content');
+
+      // Try to write to a path where a file blocks directory creation
+      const invalidPath = path.join(filePath, 'subdir', 'report.json');
 
       await expect(reporter.writeToFile(mockReport, invalidPath)).rejects.toThrow();
     });
