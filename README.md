@@ -83,18 +83,21 @@ OPENAI_API_KEY=your-api-key-here
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run all unit tests (fast, no API keys needed)
 npm test
 
 # Run unit tests only
 npm run test:unit
 
-# Run integration tests
+# Run integration tests (requires OPENAI_API_KEY)
+export OPENAI_API_KEY=sk-your-key
 npm run test:integration
 
 # Run with coverage
 npm run test:coverage
 ```
+
+**Note**: Integration tests make real API calls and require environment variables. See [tests/integration/README.md](tests/integration/README.md) for details.
 
 ### Linting & Formatting
 
