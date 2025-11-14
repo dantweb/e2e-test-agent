@@ -1,0 +1,26 @@
+# E2E Test Agent Demo - Shopping Cart Test
+# This demonstrates the complete workflow from YAML specification to executed tests with reports
+
+shopping-cart-test:
+  url: https://demo.playwright.dev/todomvc
+  timeout: 30000
+  jobs:
+    - name: Add items to todo list
+      prompt: |
+        Navigate to the todo list application
+        Add three todo items: "Buy milk", "Read book", and "Exercise"
+        Verify all three items appear in the list
+      acceptance:
+        - Three items are visible in the todo list
+        - Each item shows the correct text
+        - Items can be checked off
+
+    - name: Complete and filter todos
+      prompt: |
+        Mark the first item as completed
+        Filter to show only active items
+        Verify only incomplete items are shown
+      acceptance:
+        - First item is checked
+        - Active filter shows 2 items
+        - Completed items are hidden when active filter is selected

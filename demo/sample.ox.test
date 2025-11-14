@@ -1,0 +1,33 @@
+# Sample OXTest File - Login Flow Demo
+# This demonstrates the OXTest domain-specific language format
+
+# Navigate to application
+navigate url=https://demo.playwright.dev/todomvc
+
+# Add first todo item
+click css=.new-todo
+type css=.new-todo value=Buy milk
+press key=Enter
+
+# Add second todo item
+click css=.new-todo
+type css=.new-todo value=Read book
+press key=Enter
+
+# Add third todo item
+click css=.new-todo
+type css=.new-todo value=Exercise
+press key=Enter
+
+# Verify items were added
+assertVisible css=.todo-list
+assertText css=.todo-count text=3 items left
+
+# Complete first item
+click css=.todo-list li:first-child .toggle
+
+# Verify completion
+assertText css=.todo-count text=2 items left
+
+# Take screenshot
+screenshot path=demo-result.png
