@@ -78,6 +78,16 @@ node ../../dist/index.js \
   --verbose
 
 # Output: Creates _generated/shopping-cart-test.spec.ts
+
+# Generate with OXTest format (for debugging/intermediate format)
+node ../../dist/index.js \
+  --src=shopping-flow.yaml \
+  --output=_generated \
+  --env=.env.test \
+  --oxtest \
+  --verbose
+
+# Output: Creates both .spec.ts and .ox.test files
 ```
 
 #### 2. Run the generated Playwright tests
@@ -336,6 +346,7 @@ The `_generated/` directory will contain:
 ```
 _generated/
 ├── shopping-cart-test.spec.ts    # Generated Playwright test (all jobs as sequential steps)
+├── shopping-cart-test.ox.test    # OXTest format (if --oxtest flag used)
 ├── execution.log                 # Test execution logs (if generated)
 └── screenshots/                  # Screenshots if tests fail
     └── *.png
@@ -351,8 +362,25 @@ _generated/
 - ⚠️  **Gitignored by default** (regenerated on each run)
 
 **Output Format Options:**
-- `.spec.ts` - Standard Playwright test files (default, production-ready)
-- `.ox.test` - Intermediate format using OXTest commands (debugging, see CommandType.ts)
+- `.spec.ts` - Standard Playwright test files (always generated, production-ready)
+- `.ox.test` - OXTest DSL format (generated with `--oxtest` flag)
+
+**OXTest Format Example:**
+```oxtest
+# shopping-cart-test - Generated from YAML
+navigate url=https://osc2.oxid.shop
+assert_visible css=.logo
+click css=.product:first-child .add-to-cart
+assert_text css=.mini-cart .badge text="1"
+click css=.product:nth-child(2) .add-to-cart
+assert_text css=.mini-cart .badge text="2"
+```
+
+The OXTest format is a simple DSL with commands like `navigate`, `click`, `type`, `assert_visible`, etc. It's useful for:
+- Debugging test logic
+- Understanding test flow without TypeScript/Playwright knowledge
+- Creating intermediate representations
+- Manual test execution with custom parsers
 
 ## Best Practices
 
