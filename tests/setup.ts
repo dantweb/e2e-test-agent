@@ -18,7 +18,6 @@ if (typeof (globalThis as any).Blob === 'undefined') {
 
   // 2.1 Ensure Web Streams are available on globalThis before requiring 'undici'
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { ReadableStream, WritableStream, TransformStream } = require('stream/web');
 
     if (typeof (globalThis as any).ReadableStream === 'undefined' && ReadableStream) {
@@ -52,9 +51,9 @@ if (typeof (globalThis as any).Blob === 'undefined') {
       readonly lastModified: number;
 
       constructor(
-          fileBits: any[],
-          fileName: string,
-          options: { lastModified?: number; type?: string } = {},
+        fileBits: any[],
+        fileName: string,
+        options: { lastModified?: number; type?: string } = {}
       ) {
         super(fileBits, { type: options.type });
         this.name = fileName;
@@ -66,7 +65,7 @@ if (typeof (globalThis as any).Blob === 'undefined') {
   }
 
   // 2.4 Now require undici, which expects Blob, File, DOMException and Web Streams to be present
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+
   const { fetch, Headers, Request, Response, FormData, File } = require('undici');
 
   // 2.5 Attach fetch-related globals if not already defined
@@ -92,7 +91,7 @@ if (typeof (globalThis as any).Blob === 'undefined') {
   // 2.6 Final safety check: if fetch is still missing, fail fast
   if (typeof globalThis.fetch === 'undefined') {
     throw new Error(
-        'Global fetch is not available. Please run tests on Node 18+ or ensure a proper polyfill is in place.',
+      'Global fetch is not available. Please run tests on Node 18+ or ensure a proper polyfill is in place.'
     );
   }
 })();
