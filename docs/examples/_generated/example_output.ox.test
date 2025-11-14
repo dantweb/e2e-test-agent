@@ -1,0 +1,35 @@
+# shopping-cart-test - Generated from YAML
+
+# Step: homepage
+navigate url=https://osc2.oxid.shop
+wait_navigation timeout=5000
+assert_visible css=.logo
+assert_exists css=.logo
+
+# Step: add-two-products
+click css=.product-tile:nth-child(1) .add-to-cart-button fallback=text="Add to cart"
+wait timeout=2000
+assert_visible css=.mini-cart-badge
+click css=.product-tile:nth-child(2) .add-to-cart-button fallback=text="Add to cart"
+wait timeout=2000
+assert_text css=.mini-cart-badge text=2
+
+# Step: browse-category-and-add
+click css=.category-menu-item fallback=text="Categories"
+wait_navigation timeout=5000
+assert_url pattern=.*/categories/.*
+click css=.product-tile .add-to-cart-button fallback=text="Add to cart"
+wait timeout=2000
+assert_text css=.mini-cart-badge text=3
+
+# Step: view-cart
+click css=.minicart-link fallback=text="Cart"
+wait_navigation timeout=5000
+assert_url pattern=.*/cart
+assert_visible css=.cart-items
+assert_exists css=.cart-item:nth-child(1)
+assert_exists css=.cart-item:nth-child(2)
+assert_exists css=.cart-item:nth-child(3)
+assert_visible css=.product-name
+assert_visible css=.product-price
+assert_visible css=.checkout-button fallback=text="Checkout"
