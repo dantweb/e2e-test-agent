@@ -50,3 +50,4 @@ temp/
 
 # Playwright browsers
 .playwright/
+tests/realworld/_generated/

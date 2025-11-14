@@ -1,0 +1,30 @@
+shopping-cart-test:
+  environment: production
+  url: https://osc2.oxid.shop
+  timeout: 30
+  jobs:
+    - name: homepage
+      prompt: Go to the first page
+      acceptance:
+        - page loads without errors
+        - shop logo is visible
+
+    - name: add-two-products
+      prompt: Add 2 different products to the cart from the homepage
+      acceptance:
+        - products are added successfully
+        - mini-cart badge shows 2 items
+
+    - name: browse-category-and-add
+      prompt: Navigate to a product category and add one product to cart
+      acceptance:
+        - category page loads
+        - product is added to cart
+        - mini-cart badge shows 3 items
+
+    - name: view-cart
+      prompt: Go to the shopping cart page
+      acceptance:
+        - cart displays all 3 products
+        - product names and prices are visible
+        - checkout button is present
