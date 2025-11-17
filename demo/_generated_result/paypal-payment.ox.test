@@ -1,0 +1,61 @@
+# paypal-payment-test - Generated from YAML
+
+# Step: user-login
+navigate url=https://osc2.oxid.shop
+click css=.service-menu.showLogin
+type css=input[name="lgn_usr"] value=redrobot@dantweb.dev
+type css=input[name="lgn_pwd"] value=useruser
+click text="Login" fallback=css=button[type="submit"]
+wait_navigation timeout=5000
+assert_visible css=.service-menu.showLogin
+assert_exists css=.account-dropdown
+assert_url pattern=.*/account.*
+
+# Step: add-products-to-cart
+click css=.productData .btn-default[type="submit"]
+wait timeout=2000
+click css=.modal-dialog .modal-header .close
+click css=.productData:nth-of-type(2) .btn-default[type="submit"]
+wait timeout=2000
+click css=.modal-dialog .modal-header .close
+assert_exists css=.minibasket-menu .badge
+assert_text css=.minibasket-menu .badge text=2
+
+# Step: open-cart-and-checkout
+click css=.btn-group.minibasket-menu button
+assert_visible css=.minibasket-menu-box
+click css=.minibasket-menu-box .btn.btn-primary
+wait_navigation timeout=5000
+assert_url pattern=.*/payment.*
+assert_exists css=.payment-methods
+
+# Step: select-paypal-payment
+click css=input[type="radio"][value="oscpaypal"]
+assert_value css=input[type="radio"][value="oscpaypal"] value=oscpaypal
+click text="Next" fallback=css=button:contains("Next")
+wait_navigation timeout=5000
+assert_url pattern=.*/order.*
+assert_visible css=.order-summary
+
+# Step: accept-terms-and-order
+click css=input[name="ord_agb"]
+assert_value css=input[name="ord_agb"] value=1
+click text="Order now" fallback=css=button[type="submit"]
+wait_navigation timeout=5000
+
+# Step: verify-paypal-iframe
+wait timeout=5000
+assert_visible css=iframe[title="PayPal"] fallback=css=iframe[src*="paypal"]
+assert_exists css=iframe[title="PayPal"] fallback=css=iframe[src*="paypal"]
+wait timeout=10000
+
+# Step: paypal-popup-login (manual step)
+# Manual intervention required for PayPal popup login
+wait timeout=15000
+
+# Step: verify-order-confirmation
+wait_navigation timeout=10000
+assert_url pattern=.*/thankyou.*
+assert_visible css=.thankyou-page
+assert_text css=.order-confirmation text=Thank you
+screenshot path=order-confirmation.png

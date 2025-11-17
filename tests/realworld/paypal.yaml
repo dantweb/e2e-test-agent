@@ -1,306 +1,62 @@
-# PayPal Payment Flow - OXID eShop
-# Based on: /home/dtkachev/osc/strpwt7-oct21/paypal-module-6.3/tests/e2e/playwright/tests/e2e/PaypalPayment.spec.js
-# Test Flow: Login → Add to Cart → Checkout → Select PayPal → PayPal Popup → Order Confirmation
+paypal-payment-test:
+  environment: production
+  url: https://osc2.oxid.shop
+  timeout: 180
+  jobs:
+    - name: user-login
+      prompt: Login to the shop with credentials redrobot@dantweb.dev and password useruser. Click on the user menu at .service-menu.showLogin, fill in the login form with email #loginEmail and password #loginPasword, submit the form, and verify that div.menu-dropdowns > ul is visible after login
+      acceptance:
+        - user menu is visible after login
+        - login was successful
+        - user is authenticated
 
-name: PayPal Payment Integration Test
-description: Complete PayPal payment flow from cart to order confirmation
+    - name: add-products-to-cart
+      prompt: Add 2 products to the shopping cart. Click on the first product's add-to-cart button using selector .productData .btn-default[type="submit"], wait for the modal, close it by clicking .modal-dialog .modal-header .close, then add a second product using .productData:nth-of-type(2) .btn-default[type="submit"] and close its modal
+      acceptance:
+        - first product is added to cart
+        - second product is added to cart
+        - cart has 2 items
 
-env:
-  BASE_URL: https://osc2.oxid.shop
-  USER_EMAIL: redrobot@dantweb.dev
-  USER_PASSWORD: useruser
-  PAYPAL_EMAIL: ${PAYPAL_EMAIL}
-  PAYPAL_PASSWORD: ${PAYPAL_PASSWORD}
+    - name: open-cart-and-checkout
+      prompt: Open the mini basket dropdown by clicking .btn-group.minibasket-menu button, verify the basket menu box is visible at .minibasket-menu-box, then click the checkout button at .minibasket-menu-box .btn.btn-primary
+      acceptance:
+        - mini basket opens successfully
+        - checkout page loads
+        - user is on payment selection page
 
-setup:
-  - navigate url=${BASE_URL}
-  - wait duration=2000
+    - name: select-paypal-payment
+      prompt: Select PayPal as the payment method by clicking on the radio button input[type="radio"][value="oscpaypal"], wait for it to be selected, then click the Next button using button:has-text("Next") to proceed to order summary
+      acceptance:
+        - PayPal payment method is selected
+        - user advances to order summary page
+        - order details are visible
 
-tasks:
-  # ============================================
-  # TASK 1: User Login
-  # ============================================
-  - id: user-login
-    description: Login to shop with test user credentials
-    priority: 1
-    steps:
-      # Click user center to open login dropdown
-      - click css=.service-menu.showLogin
-        description: Open user login menu
+    - name: accept-terms-and-order
+      prompt: Accept the terms and conditions by clicking the checkbox #checkAgbTop, verify it is checked by looking for #checkAgbTop:checked, wait 20 seconds for PayPal iframe to load, then click the Order Now button using button:has-text("Order now")
+      acceptance:
+        - terms and conditions checkbox is checked
+        - order button is clicked
+        - order is submitted
 
-      - wait duration=1000
+    - name: verify-paypal-iframe
+      prompt: Wait for the PayPal iframe to appear on the page. Look for iframe[title="PayPal"] or iframe[src*="paypal"]. The PayPal button inside the iframe needs to be clicked manually or by special handling. Wait 10 seconds for the PayPal popup to appear
+      acceptance:
+        - PayPal iframe is visible on page
+        - iframe loads correctly
+        - PayPal integration is working
 
-      # Check if already logged in (skip login if yes)
-      - assert_visible css=div.menu-dropdowns > ul
-        description: Check if user is already logged in
-        continue_on_failure: true
+    - name: paypal-popup-login
+      prompt: This is a manual step or requires special popup handling. A PayPal popup window should open where you need to login with PayPal credentials. Fill in the email field #email, click next button #btnNext, fill in password field #password, click login button #btnLogin, then click the continue button. Wait 30 seconds for the user to complete this process
+      acceptance:
+        - PayPal popup window opens
+        - user logs into PayPal
+        - PayPal authorizes the payment
+        - popup closes and returns to shop
 
-      # Fill email
-      - fill css=form[name="login"] #loginEmail value=${USER_EMAIL}
-        description: Enter email address
-        fallback: css=#loginEmail
-
-      # Fill password
-      - fill css=form[name="login"] #loginPasword value=${USER_PASSWORD}
-        description: Enter password
-        fallback: css=#loginPasword
-
-      # Submit login
-      - click css=form[name="login"] button[type="submit"]
-        description: Click login button
-
-      - wait duration=5000
-
-      # Verify login success
-      - assert_visible css=div.menu-dropdowns > ul
-        description: Verify user menu is visible after login
-
-  # ============================================
-  # TASK 2: Add Products to Cart
-  # ============================================
-  - id: add-to-cart
-    description: Add products to shopping cart
-    priority: 2
-    depends_on: [user-login]
-    steps:
-      # Check if cart already has items
-      - assert_visible css=.minibasket-menu .badge
-        description: Check if cart badge exists
-        continue_on_failure: true
-
-      # Add first product
-      - click css=.productData .btn-default[type="submit"]
-        description: Add first product to cart
-        fallback: css=button[type="submit"]:has-text("To cart")
-
-      - wait duration=2000
-
-      # Close modal if present
-      - click css=.modal-dialog .modal-header .close
-        description: Close add-to-cart modal
-        continue_on_failure: true
-
-      - wait duration=1000
-
-      # Add second product
-      - click css=.productData:nth-of-type(2) .btn-default[type="submit"]
-        description: Add second product to cart
-        continue_on_failure: true
-
-      - wait duration=2000
-
-      # Close modal again
-      - click css=.modal-dialog .modal-header .close
-        description: Close second modal
-        continue_on_failure: true
-
-      - wait duration=1000
-
-  # ============================================
-  # TASK 3: Open Cart and Checkout
-  # ============================================
-  - id: checkout
-    description: Open mini basket and proceed to checkout
-    priority: 3
-    depends_on: [add-to-cart]
-    steps:
-      # Open mini basket dropdown
-      - click css=.btn-group.minibasket-menu button
-        description: Click cart dropdown button
-        fallback: css=.minibasket-menu button.dropdown-toggle
-
-      - wait duration=2000
-
-      # Verify basket flyout is visible
-      - assert_visible css=.minibasket-menu-box
-        description: Verify basket dropdown is open
-
-      # Click checkout button
-      - click css=.minibasket-menu-box .btn.btn-primary
-        description: Click checkout button in basket
-        fallback: css=a:has-text("Checkout")
-
-      - wait duration=3000
-
-  # ============================================
-  # TASK 4: Select PayPal Payment Method
-  # ============================================
-  - id: select-paypal
-    description: Select PayPal as payment method
-    priority: 4
-    depends_on: [checkout]
-    steps:
-      # Wait for payment page to load
-      - wait duration=5000
-
-      # Select PayPal payment radio button
-      - click css=input[type="radio"][value="oscpaypal"]
-        description: Select PayPal payment method
-        fallback: css=#payment_oscpaypal
-
-      - wait duration=2000
-
-      # Click Next/Continue button
-      - click css=button:has-text("Next")
-        description: Proceed to order summary
-        fallback: css=button:has-text("Weiter")
-
-      - wait duration=3000
-
-  # ============================================
-  # TASK 5: Accept Terms and Order Now
-  # ============================================
-  - id: accept-terms-order
-    description: Accept terms and conditions and place order
-    priority: 5
-    depends_on: [select-paypal]
-    steps:
-      # Accept terms and conditions
-      - click css=#checkAgbTop
-        description: Check Terms & Conditions checkbox
-
-      - wait duration=1000
-
-      # Verify checkbox is checked
-      - assert_visible css=#checkAgbTop:checked
-        description: Verify T&C checkbox is checked
-
-      # Wait before clicking order (PayPal iframe loads)
-      - wait duration=20000
-
-      # Click Order Now button (first visible)
-      - click css=button:has-text("Order now")
-        description: Click Order Now button
-        fallback: css=button:has-text("Zahlungspflichtig bestellen")
-
-      - wait duration=2000
-
-  # ============================================
-  # TASK 6: PayPal Iframe Interaction
-  # ============================================
-  - id: paypal-iframe
-    description: Click PayPal button in iframe to open popup
-    priority: 6
-    depends_on: [accept-terms-order]
-    steps:
-      # Wait for PayPal iframe to load
-      - wait duration=5000
-
-      # The PayPal button is inside an iframe - we need to handle this specially
-      # Note: This step might need manual intervention or custom handling
-      # as clicking inside iframes requires special Playwright code
-
-      - assert_visible css=iframe[title="PayPal"]
-        description: Verify PayPal iframe is present
-        fallback: css=iframe[src*="paypal"]
-
-      # Wait for user to manually click PayPal button in iframe
-      # or for automated popup handling
-      - wait duration=10000
-        description: Wait for PayPal popup to appear
-
-  # ============================================
-  # TASK 7: PayPal Popup Login (Manual Step)
-  # ============================================
-  - id: paypal-login
-    description: Handle PayPal popup login (requires popup handling)
-    priority: 7
-    depends_on: [paypal-iframe]
-    steps:
-      # Note: Popup handling is complex and may require:
-      # 1. Detecting the popup window
-      # 2. Switching context to popup
-      # 3. Filling login form
-      # 4. Waiting for popup to close
-
-      # This is a placeholder for documentation
-      # Actual implementation requires custom code or manual intervention
-
-      - wait duration=30000
-        description: Wait for PayPal login and authorization (manual step)
-
-  # ============================================
-  # TASK 8: Verify Order Confirmation
-  # ============================================
-  - id: verify-thankyou
-    description: Verify successful payment and order confirmation
-    priority: 8
-    depends_on: [paypal-login]
-    steps:
-      # Wait for redirect back to shop
-      - wait duration=10000
-
-      # Verify thank you page
-      - assert_visible css=#thankyouPage
-        description: Verify thank you page is displayed
-        fallback: css=.thankyou
-
-      # Verify order confirmation message
-      - assert_visible css=#thankyouPage
-        description: Confirm payment was successful
-
-      - wait duration=2000
-
-      # Take screenshot for verification
-      - screenshot filename=paypal-payment-success.png
-        description: Capture order confirmation
-
-teardown:
-  # Optional cleanup
-  - wait duration=2000
-
-# Validation rules
-validations:
-  - type: exists
-    selector: css=div.menu-dropdowns > ul
-    description: User must be logged in
-
-  - type: exists
-    selector: css=.minibasket-menu
-    description: Shopping cart must be accessible
-
-  - type: exists
-    selector: css=input[type="radio"][value="oscpaypal"]
-    description: PayPal payment method must be available
-
-  - type: url
-    pattern: "thankyou|checkout"
-    description: Should be on checkout or thank you page at end
-
-metadata:
-  tags: [paypal, payment, integration, oxid]
-  category: payment-integration
-  priority: high
-  estimated_duration: 180s
-  browser: chromium
-  viewport:
-    width: 1920
-    height: 1080
-
-  # Special notes for PayPal testing
-  notes: |
-    This test requires special handling for:
-    1. PayPal iframe interaction (clicking button inside iframe)
-    2. PayPal popup window handling (new browser context)
-    3. PayPal sandbox credentials (PAYPAL_EMAIL, PAYPAL_PASSWORD)
-
-    The test is based on the PayPal module E2E tests which use:
-    - ShopHelper.loginUser()
-    - ShopHelper.addItemsToCart()
-    - ShopHelper.checkout()
-    - ShopHelper.selectPaymentMethod('PayPal')
-    - ShopHelper.nextStep()
-    - ShopHelper.acceptTerms()
-    - ShopHelper.orderNow()
-    - PaypalHelper.clickPaypalButtonInIframe('Paypal')
-    - PaypalHelper.handlePopup()
-    - PaypalHelper.verifyThankYouPage()
-
-    Manual steps required:
-    - Clicking PayPal button inside iframe (Task 6)
-    - Handling PayPal popup login (Task 7)
-
-    For automated execution, consider using:
-    - Custom iframe handlers
-    - Popup context switching
-    - PayPal sandbox test accounts
+    - name: verify-order-confirmation
+      prompt: After PayPal authorization completes and the popup closes, wait for redirect back to the shop. Verify that the thank you page is displayed by checking for #thankyouPage or .thankyou element. Take a screenshot to confirm successful payment
+      acceptance:
+        - thank you page is displayed
+        - order confirmation is visible
+        - payment was successful
+        - screenshot is captured
