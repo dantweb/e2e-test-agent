@@ -34,10 +34,18 @@ Thumbs.db
 *.swo
 *~
 
-# Environment
+# Environment variables - NEVER commit these!
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+.env.staging
+**/.env
+**/tests/.env
+# Keep only example files
+!.env.example
+!.env.test.example
 
 
 # Generated files

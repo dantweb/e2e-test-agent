@@ -1,0 +1,65 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Secret Detection Pre-Commit Hook
+echo "🔍 Checking for secrets in staged files..."
+
+# Patterns to detect secrets
+SECRET_PATTERNS=(
+  "sk-[a-zA-Z0-9]{20,}"                    # OpenAI API keys
+  "sk-ant-[a-zA-Z0-9-]{20,}"               # Anthropic API keys
+  "(OPENAI|ANTHROPIC|AWS|GITHUB)_API_KEY\s*=\s*['\"][^'\"]{20,}" # API keys in files
+  "password\s*=\s*['\"][^'\"]{8,}"         # Passwords
+  "bearer\s+[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+" # JWT tokens
+  "ghp_[a-zA-Z0-9]{36}"                    # GitHub Personal Access Token
+  "gho_[a-zA-Z0-9]{36}"                    # GitHub OAuth Token
+)
+
+# Files to check
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|js|json|ya?ml|env)$')
+
+if [ -z "$STAGED_FILES" ]; then
+  echo "✅ No relevant files to check"
+  exit 0
+fi
+
+# Check each file for secrets
+FOUND_SECRETS=0
+for pattern in "${SECRET_PATTERNS[@]}"; do
+  while IFS= read -r file; do
+    if [ -f "$file" ]; then
+      # Skip test files with mock keys
+      if echo "$file" | grep -E '(test|spec|mock|example)' > /dev/null; then
+        continue
+      fi
+
+      if grep -qiE "$pattern" "$file"; then
+        echo "❌ Potential secret found in: $file"
+        echo "   Pattern: $pattern"
+        FOUND_SECRETS=1
+      fi
+    fi
+  done <<< "$STAGED_FILES"
+done
+
+if [ $FOUND_SECRETS -eq 1 ]; then
+  echo ""
+  echo "🚨 SECRET DETECTION FAILED!"
+  echo "Detected potential secrets in your staged files."
+  echo ""
+  echo "To fix this:"
+  echo "  1. Remove the secrets from your files"
+  echo "  2. Use environment variables instead"
+  echo "  3. Store secrets in .env files (already in .gitignore)"
+  echo "  4. Use GitHub Secrets for CI/CD"
+  echo ""
+  echo "To bypass this check (NOT RECOMMENDED):"
+  echo "  git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+echo "✅ No secrets detected in staged files"
+
+# Run lint-staged for code formatting
+npx lint-staged
