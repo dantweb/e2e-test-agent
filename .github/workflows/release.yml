@@ -92,7 +92,6 @@ jobs:
           generate_release_notes: true
           files: |
             *.tgz
-            dist/**/*
 
       - name: Publish to npm (optional)
         if: false  # Enable when ready to publish to npm
