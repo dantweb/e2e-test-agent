@@ -275,7 +275,7 @@ export class MemoryLeakDetector {
   private generateRecommendations(
     leakDetected: boolean,
     growthRate: number,
-    totalGrowth: number
+    _totalGrowth: number
   ): string[] {
     const recommendations: string[] = [];
 
