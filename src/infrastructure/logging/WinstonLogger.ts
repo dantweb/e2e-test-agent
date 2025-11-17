@@ -283,7 +283,7 @@ export function getLogger(options?: LoggerOptions): WinstonLogger {
  */
 export function resetLogger(): void {
   if (defaultLogger) {
-    defaultLogger.close();
+    void defaultLogger.close();
     defaultLogger = null;
   }
 }

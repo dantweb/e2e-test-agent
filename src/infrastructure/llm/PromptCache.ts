@@ -61,12 +61,14 @@ export class PromptCache<T> {
   private readonly ttl: number;
   private currentSize: number = 0;
 
-  constructor(options: {
-    /** Maximum cache size in bytes (default: 50MB) */
-    maxSize?: number;
-    /** Time-to-live in milliseconds (default: 1 hour) */
-    ttl?: number;
-  } = {}) {
+  constructor(
+    options: {
+      /** Maximum cache size in bytes (default: 50MB) */
+      maxSize?: number;
+      /** Time-to-live in milliseconds (default: 1 hour) */
+      ttl?: number;
+    } = {}
+  ) {
     this.maxSize = options.maxSize || 50 * 1024 * 1024; // 50MB default
     this.ttl = options.ttl || 3600000; // 1 hour default
   }
@@ -75,9 +77,7 @@ export class PromptCache<T> {
    * Generate cache key from prompt and context
    */
   static generateKey(prompt: string, context?: Record<string, any>): string {
-    const contextStr = context
-      ? JSON.stringify(context, Object.keys(context).sort())
-      : '';
+    const contextStr = context ? JSON.stringify(context, Object.keys(context).sort()) : '';
 
     // Simple hash function (not cryptographic, just for caching)
     const str = `${prompt}|${contextStr}`;
@@ -111,10 +111,7 @@ export class PromptCache<T> {
    * Evict least recently used entries until size is acceptable
    */
   private evictIfNeeded(newEntrySize: number): void {
-    while (
-      this.currentSize + newEntrySize > this.maxSize &&
-      this.accessOrder.length > 0
-    ) {
+    while (this.currentSize + newEntrySize > this.maxSize && this.accessOrder.length > 0) {
       // Evict least recently used (first in accessOrder)
       const keyToEvict = this.accessOrder.shift()!;
       const entry = this.cache.get(keyToEvict);

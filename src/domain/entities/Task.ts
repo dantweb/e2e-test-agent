@@ -1,9 +1,5 @@
 import { OxtestCommand } from './OxtestCommand';
-import {
-  TaskMetadata,
-  mergeMetadata,
-  validateMetadata,
-} from '../interfaces/TaskMetadata';
+import { TaskMetadata, mergeMetadata, validateMetadata } from '../interfaces/TaskMetadata';
 
 /**
  * Domain entity representing a test task.

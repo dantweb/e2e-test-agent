@@ -33,23 +33,16 @@ export class MockHTMLExtractor implements IHTMLExtractor {
   ) {}
 
   async extractHTML(): Promise<string> {
-    return (
-      this.responses.html ||
-      '<html><body><div>Mock HTML content</div></body></html>'
-    );
+    return this.responses.html || '<html><body><div>Mock HTML content</div></body></html>';
   }
 
   async extractSimplified(): Promise<string> {
-    return (
-      this.responses.simplified ||
-      '<body><div>Mock simplified content</div></body>'
-    );
+    return this.responses.simplified || '<body><div>Mock simplified content</div></body>';
   }
 
   async extractVisible(): Promise<string> {
     return (
-      this.responses.visible ||
-      '<body><div style="display: block;">Visible content</div></body>'
+      this.responses.visible || '<body><div style="display: block;">Visible content</div></body>'
     );
   }
 

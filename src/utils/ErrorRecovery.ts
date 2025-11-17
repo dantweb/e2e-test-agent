@@ -5,12 +5,7 @@
  * Handles transient failures, retries with backoff, and graceful degradation.
  */
 
-export type RecoveryStrategy =
-  | 'retry'
-  | 'fallback'
-  | 'skip'
-  | 'fail'
-  | 'degrade';
+export type RecoveryStrategy = 'retry' | 'fallback' | 'skip' | 'fail' | 'degrade';
 
 export interface RecoveryOptions {
   /** Maximum retry attempts */
@@ -171,8 +166,7 @@ export class ErrorRecovery {
         }
 
         // Determine if we should retry
-        const strategy =
-          options.strategy || ErrorClassifier.getRecommendedStrategy(lastError);
+        const strategy = options.strategy || ErrorClassifier.getRecommendedStrategy(lastError);
 
         if (strategy === 'fail' || i === opts.maxRetries) {
           // No more retries or permanent error
@@ -352,7 +346,7 @@ export class HealthCheck {
         if (!result) {
           allHealthy = false;
         }
-      } catch (error) {
+      } catch {
         results[name] = false;
         allHealthy = false;
       }

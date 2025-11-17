@@ -258,7 +258,10 @@ export class PerformanceBenchmark {
   /**
    * Compare two benchmark results
    */
-  static compare(baseline: BenchmarkResult, current: BenchmarkResult): {
+  static compare(
+    baseline: BenchmarkResult,
+    current: BenchmarkResult
+  ): {
     durationChange: number; // percentage
     memoryChange: number; // percentage
     faster: boolean;
@@ -267,8 +270,7 @@ export class PerformanceBenchmark {
     const durationChange =
       ((current.avgDuration - baseline.avgDuration) / baseline.avgDuration) * 100;
 
-    const memoryChange =
-      ((current.memoryUsed - baseline.memoryUsed) / baseline.memoryUsed) * 100;
+    const memoryChange = ((current.memoryUsed - baseline.memoryUsed) / baseline.memoryUsed) * 100;
 
     return {
       durationChange,

@@ -202,9 +202,7 @@ export class LLMCostTracker {
    * @returns Estimated cost
    * @throws Error if budget limit exceeded
    */
-  trackRequest(
-    record: Omit<CostRecord, 'timestamp' | 'cost'>
-  ): number {
+  trackRequest(record: Omit<CostRecord, 'timestamp' | 'cost'>): number {
     const cost = this.calculateCost(
       record.model,
       record.inputTokens,
@@ -218,7 +216,7 @@ export class LLMCostTracker {
       if (currentCost + cost > this.budgetLimit) {
         throw new Error(
           `Budget limit exceeded: Current $${currentCost.toFixed(4)} + ` +
-          `Request $${cost.toFixed(4)} > Limit $${this.budgetLimit.toFixed(4)}`
+            `Request $${cost.toFixed(4)} > Limit $${this.budgetLimit.toFixed(4)}`
         );
       }
     }
@@ -257,10 +255,7 @@ export class LLMCostTracker {
     }
 
     const totalCost = this.getTotalCost();
-    const totalTokens = this.records.reduce(
-      (sum, r) => sum + r.inputTokens + r.outputTokens,
-      0
-    );
+    const totalTokens = this.records.reduce((sum, r) => sum + r.inputTokens + r.outputTokens, 0);
 
     const byModel = new Map<string, number>();
     const byProvider = new Map<string, number>();
@@ -274,10 +269,7 @@ export class LLMCostTracker {
       byModel.set(record.model, (byModel.get(record.model) || 0) + record.cost);
 
       // By provider
-      byProvider.set(
-        record.provider,
-        (byProvider.get(record.provider) || 0) + record.cost
-      );
+      byProvider.set(record.provider, (byProvider.get(record.provider) || 0) + record.cost);
 
       // By tag
       if (record.tags) {
@@ -293,8 +285,7 @@ export class LLMCostTracker {
         const pricing = MODEL_PRICING[record.model];
         if (pricing && pricing.cachedInputCostPer1M && pricing.inputCostPer1M) {
           const fullCost = (record.cachedTokens / 1_000_000) * pricing.inputCostPer1M;
-          const cachedCost =
-            (record.cachedTokens / 1_000_000) * pricing.cachedInputCostPer1M;
+          const cachedCost = (record.cachedTokens / 1_000_000) * pricing.cachedInputCostPer1M;
           cacheSavings += fullCost - cachedCost;
         }
       }
@@ -334,9 +325,7 @@ export class LLMCostTracker {
     }
 
     if (filter?.tags) {
-      filtered = filtered.filter(r =>
-        r.tags?.some(tag => filter.tags?.includes(tag))
-      );
+      filtered = filtered.filter(r => r.tags?.some(tag => filter.tags?.includes(tag)));
     }
 
     if (filter?.since) {
