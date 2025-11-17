@@ -2,8 +2,32 @@
 # Docker Integration Test Script
 # Tests the ability to call Docker commands to generate tests and .ox.test files
 # using the given .env file
+#
+# Usage:
+#   ./test-docker-integration.sh              # Keep generated files (default)
+#   ./test-docker-integration.sh --cleanup    # Delete generated files after test
 
 set -e  # Exit on error
+
+# Parse command line arguments
+CLEANUP_GENERATED="false"
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --cleanup)
+            CLEANUP_GENERATED="true"
+            shift
+            ;;
+        --no-cleanup)
+            CLEANUP_GENERATED="false"
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--cleanup | --no-cleanup]"
+            exit 1
+            ;;
+    esac
+done
 
 echo "======================================"
 echo "Docker Integration Test"
@@ -14,7 +38,7 @@ echo ""
 DOCKER_IMAGE="e2e-test-agent:latest"
 TEST_YAML="tests/realworld/shopping-flow.yaml"
 OUTPUT_DIR="_generated"
-ENV_FILE=".env.test"
+ENV_FILE=".env"
 CONTAINER_NAME="e2e-test-integration-$$"
 
 # Colors for output
@@ -46,10 +70,12 @@ cleanup() {
         print_success "Removed container: ${CONTAINER_NAME}"
     fi
 
-    # Clean up generated files
-    if [ -d "${OUTPUT_DIR}" ]; then
+    # Clean up generated files (only if CLEANUP_GENERATED is true)
+    if [ "${CLEANUP_GENERATED}" = "true" ] && [ -d "${OUTPUT_DIR}" ]; then
         rm -rf "${OUTPUT_DIR}"
         print_success "Cleaned up output directory: ${OUTPUT_DIR}"
+    elif [ "${CLEANUP_GENERATED}" = "false" ] && [ -d "${OUTPUT_DIR}" ]; then
+        print_info "Keeping generated files in: ${OUTPUT_DIR}"
     fi
 }
 
@@ -119,6 +145,7 @@ echo ""
 print_info "Docker command:"
 echo "  docker run --rm \\"
 echo "    --name ${CONTAINER_NAME} \\"
+echo "    --user \$(id -u):\$(id -g) \\"
 echo "    --env-file ${ENV_FILE} \\"
 echo "    -v \$(pwd):/workspace \\"
 echo "    ${DOCKER_IMAGE} \\"
@@ -128,8 +155,10 @@ echo "    --oxtest"
 echo ""
 
 # Execute Docker command
+# Run as current user to avoid permission issues
 docker run --rm \
     --name "${CONTAINER_NAME}" \
+    --user "$(id -u):$(id -g)" \
     --env-file "${ENV_FILE}" \
     -v "$(pwd):/workspace" \
     "${DOCKER_IMAGE}" \
