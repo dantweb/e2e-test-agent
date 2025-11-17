@@ -58,6 +58,12 @@ See [demo/README.md](demo/README.md) for complete examples and workflows.
 
 For detailed setup instructions, see [Getting Started Guide](./docs/e2e-tester-agent/GETTING_STARTED.md).
 
+### 📚 Syntax Documentation
+
+- **[Complete Syntax Reference](./docs/SYNTAX-REFERENCE.md)** - Quick navigation to all syntax docs
+- **[YAML Syntax Guide](./docs/YAML-SYNTAX.md)** - Write test specifications in natural language
+- **[OXTest Syntax Guide](./docs/OXTEST-SYNTAX.md)** - Understand the generated test format
+
 ### Installation
 ### Running with Docker (Recommended)
 
