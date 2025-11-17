@@ -18,7 +18,7 @@ describe('FailureAnalyzer', () => {
       const subtask = createFailedSubtask();
       const result: ExecutionResult = {
         success: false,
-        error: new Error('Element not found with selector: css=.logo')
+        error: new Error('Element not found with selector: css=.logo'),
       };
 
       const context = await analyzer.analyze(subtask, result, mockPage);
@@ -55,9 +55,14 @@ describe('FailureAnalyzer', () => {
     it('should capture page HTML when enabled', async () => {
       mockPage.content.mockResolvedValue('<html><body>Test</body></html>');
 
-      const context = await analyzer.analyze(createFailedSubtask(), createFailedResult(), mockPage, {
-        captureHTML: true,
-      });
+      const context = await analyzer.analyze(
+        createFailedSubtask(),
+        createFailedResult(),
+        mockPage,
+        {
+          captureHTML: true,
+        }
+      );
 
       expect(context.pageHTML).toBe('<html><body>Test</body></html>');
     });
@@ -66,17 +71,27 @@ describe('FailureAnalyzer', () => {
       const screenshotBuffer = Buffer.from('fake-screenshot');
       mockPage.screenshot.mockResolvedValue(screenshotBuffer);
 
-      const context = await analyzer.analyze(createFailedSubtask(), createFailedResult(), mockPage, {
-        captureScreenshot: true,
-      });
+      const context = await analyzer.analyze(
+        createFailedSubtask(),
+        createFailedResult(),
+        mockPage,
+        {
+          captureScreenshot: true,
+        }
+      );
 
       expect(context.screenshot).toEqual(screenshotBuffer);
     });
 
     it('should not capture screenshot when disabled', async () => {
-      const context = await analyzer.analyze(createFailedSubtask(), createFailedResult(), mockPage, {
-        captureScreenshot: false,
-      });
+      const context = await analyzer.analyze(
+        createFailedSubtask(),
+        createFailedResult(),
+        mockPage,
+        {
+          captureScreenshot: false,
+        }
+      );
 
       expect(context.screenshot).toBeUndefined();
       expect(mockPage.screenshot).not.toHaveBeenCalled();
@@ -109,7 +124,12 @@ describe('FailureAnalyzer', () => {
 
   describe('extractSelectors', () => {
     it('should extract available CSS selectors from page', async () => {
-      mockPage.evaluate.mockResolvedValue(['#header', '.logo', '.nav-menu', '[data-testid="login-button"]']);
+      mockPage.evaluate.mockResolvedValue([
+        '#header',
+        '.logo',
+        '.nav-menu',
+        '[data-testid="login-button"]',
+      ]);
 
       const selectors = await analyzer.extractSelectors(mockPage);
 
