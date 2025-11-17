@@ -1,5 +1,7 @@
 /**
  * Context configuration for LLM requests
+ *
+ * Sprint 13: Enhanced with caching and cost tracking support
  */
 export interface LLMContext {
   /** The model to use (e.g., 'gpt-4', 'claude-3-opus-20240229') */
@@ -16,10 +18,24 @@ export interface LLMContext {
 
   /** Conversation history for multi-turn interactions */
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+
+  /** Sprint 13: Enable prompt caching if supported by provider */
+  enableCache?: boolean;
+
+  /** Sprint 13: Cache key for prompt caching */
+  cacheKey?: string;
+
+  /** Sprint 13: Maximum cost limit for this request (in USD) */
+  maxCost?: number;
+
+  /** Sprint 13: Tags for cost tracking and analytics */
+  tags?: string[];
 }
 
 /**
  * Response from an LLM provider
+ *
+ * Sprint 13: Enhanced with cost information and cache status
  */
 export interface LLMResponse {
   /** The generated text content */
@@ -35,6 +51,9 @@ export interface LLMResponse {
 
     /** Total tokens used */
     totalTokens: number;
+
+    /** Sprint 13: Cached tokens (if prompt caching was used) */
+    cachedTokens?: number;
   };
 
   /** The model that generated the response */
@@ -42,6 +61,15 @@ export interface LLMResponse {
 
   /** Reason the generation finished */
   finishReason: 'stop' | 'length' | 'error';
+
+  /** Sprint 13: Estimated cost in USD */
+  estimatedCost?: number;
+
+  /** Sprint 13: Whether the response came from cache */
+  cached?: boolean;
+
+  /** Sprint 13: Latency in milliseconds */
+  latencyMs?: number;
 }
 
 /**

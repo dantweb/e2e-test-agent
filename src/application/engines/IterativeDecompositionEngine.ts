@@ -1,5 +1,5 @@
 import { ILLMProvider } from '../../infrastructure/llm/interfaces';
-import { HTMLExtractor } from './HTMLExtractor';
+import { IHTMLExtractor } from '../interfaces/IHTMLExtractor';
 import { OxtestParser } from '../../infrastructure/parsers/OxtestParser';
 import { OxtestPromptBuilder } from '../../infrastructure/llm/OxtestPromptBuilder';
 import { Subtask } from '../../domain/entities/Subtask';
@@ -8,13 +8,18 @@ import { OxtestCommand } from '../../domain/entities/OxtestCommand';
 /**
  * Iteratively decomposes high-level instructions into Oxtest commands.
  * Uses LLM to discover actions step-by-step based on current page state.
+ *
+ * Uses IHTMLExtractor interface for HTML extraction, enabling:
+ * - Testing with mock extractors
+ * - Swapping between different browser automation tools
+ * - Custom extraction strategies without modifying this class
  */
 export class IterativeDecompositionEngine {
   private readonly promptBuilder: OxtestPromptBuilder;
 
   constructor(
     private readonly llmProvider: ILLMProvider,
-    private readonly htmlExtractor: HTMLExtractor,
+    private readonly htmlExtractor: IHTMLExtractor,
     private readonly oxtestParser: OxtestParser
   ) {
     this.promptBuilder = new OxtestPromptBuilder();

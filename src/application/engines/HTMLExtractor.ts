@@ -1,10 +1,17 @@
 import { Page } from 'playwright';
+import { IHTMLExtractor } from '../interfaces/IHTMLExtractor';
 
 /**
+ * Playwright-based implementation of HTML extraction.
+ *
  * Extracts HTML content from a Playwright page in various formats.
  * Used to provide context to LLM for iterative decomposition.
+ *
+ * This is an adapter that implements IHTMLExtractor interface,
+ * allowing IterativeDecompositionEngine to work with any HTML
+ * extraction backend, not just Playwright.
  */
-export class HTMLExtractor {
+export class HTMLExtractor implements IHTMLExtractor {
   constructor(private readonly page: Page) {}
 
   /**
