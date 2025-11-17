@@ -21,6 +21,9 @@ export interface ExecutionResult {
   /** Error if execution failed */
   readonly error?: Error;
 
+  /** Index of the command that failed (for self-healing) */
+  readonly failedCommandIndex?: number;
+
   /** Screenshot paths captured during execution */
   readonly screenshots?: ReadonlyArray<string>;
 
