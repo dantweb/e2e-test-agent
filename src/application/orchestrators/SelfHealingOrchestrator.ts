@@ -82,7 +82,7 @@ export class SelfHealingOrchestrator {
     for (let attempt = 1; attempt <= options.maxAttempts; attempt++) {
       // Parse the current test content
       const commands = await this.oxtestParser.parseContent(currentContent);
-      const subtask = new Subtask(`attempt-${attempt}`, testName, commands);
+      const subtask = new Subtask(`attempt-${attempt}`, testName, [...commands]);
 
       // Execute the test
       const result = await executionFn(subtask);
