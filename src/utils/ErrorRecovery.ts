@@ -244,9 +244,9 @@ export class ErrorRecovery {
    * Prevents cascading failures by "opening" circuit after threshold failures
    */
   async withCircuitBreaker<T>(
-    name: string,
+    _name: string,
     fn: () => Promise<T>,
-    options: {
+    _options: {
       failureThreshold?: number;
       resetTimeout?: number;
       verbose?: boolean;
@@ -254,7 +254,7 @@ export class ErrorRecovery {
   ): Promise<T> {
     // This is a simplified implementation
     // In production, you'd want a persistent circuit breaker state
-    const { failureThreshold = 5, resetTimeout = 60000, verbose = false } = options;
+    // Note: Parameters prefixed with _ to indicate they're unused in this basic implementation
 
     // Check if circuit is open (would check persistent state in production)
     // For now, just execute directly
