@@ -120,7 +120,7 @@ export class ExecutionContextManager {
     return {
       ...this.context,
       variables: { ...this.context.variables },
-      cookies: [...this.context.cookies ],
+      cookies: [...this.context.cookies],
       metadata: this.context.metadata ? { ...this.context.metadata } : undefined,
     };
   }

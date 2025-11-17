@@ -64,7 +64,9 @@ export class ErrorHandler {
     }
 
     if (context.file) {
-      console.error(chalk.gray(`   File: ${context.file}${context.line ? `:${context.line}` : ''}`));
+      console.error(
+        chalk.gray(`   File: ${context.file}${context.line ? `:${context.line}` : ''}`)
+      );
     }
 
     if (context.command) {
@@ -82,7 +84,9 @@ export class ErrorHandler {
       console.error(chalk.gray('\n📋 Troubleshooting:'));
       console.error(chalk.gray('   Run with --verbose for detailed logs'));
       console.error(chalk.gray('   Check docs/TROUBLESHOOTING.md for common issues'));
-      console.error(chalk.gray('   Report issues at: https://github.com/your-org/e2e-agent/issues'));
+      console.error(
+        chalk.gray('   Report issues at: https://github.com/your-org/e2e-agent/issues')
+      );
     }
 
     console.error(''); // Empty line before exit
@@ -142,7 +146,7 @@ export class ErrorHandler {
         suggestions: [
           'Check the element exists: inspect page with browser DevTools',
           'Try increasing timeout: add timeout: 30000 to YAML',
-          'Run in headful mode to see what\'s happening: HEADLESS=false',
+          "Run in headful mode to see what's happening: HEADLESS=false",
           'Verify page loaded completely before interacting',
           'See docs/TROUBLESHOOTING.md#execution-issues',
         ],
