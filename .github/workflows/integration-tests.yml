@@ -136,10 +136,56 @@ jobs:
       - name: Integration tests passed in Docker
         run: echo "✅ All real-world tests passed in Docker container"
 
+  docker-e2e-workflow-test:
+    name: Docker E2E Workflow Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: realworld-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          OPENAI_API_KEY=${{ secrets.OPEN_AI_KEY }}
+          OPENAI_API_URL=${{ secrets.OPEN_AI_URL }}
+          DEFAULT_LLM_PROVIDER=openai
+          NODE_ENV=test
+          HEADLESS=true
+          BROWSER=chromium
+          EOF
+
+      - name: Run Docker integration test script
+        run: |
+          chmod +x test-docker-integration.sh
+          if [ -z "${{ secrets.OPEN_AI_KEY }}" ]; then
+            echo "⚠️ OPEN_AI_KEY secret not configured - skipping Docker E2E test"
+            echo "This test validates the full Docker workflow:"
+            echo "  1. Build Docker image"
+            echo "  2. Load environment from .env file"
+            echo "  3. Run container to generate tests"
+            echo "  4. Validate generated .ox.test files"
+            exit 0
+          else
+            ./test-docker-integration.sh --cleanup
+          fi
+        continue-on-error: true
+
+      - name: Upload generated files (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-generated-files-${{ github.run_number }}
+          path: |
+            _generated/
+          retention-days: 7
+
   notify-failure:
     name: Notify on Failure
     runs-on: ubuntu-latest
-    needs: [realworld-tests, docker-integration-test]
+    needs: [realworld-tests, docker-integration-test, docker-e2e-workflow-test]
     if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
 
     steps:

@@ -4,6 +4,8 @@ An intelligent end-to-end testing agent that uses LLMs to decompose high-level t
 
 **🐳 This is a containerized application** - Docker is the recommended way to run it.
 
+> **📢 Latest Updates**: See [LATEST-UPDATES-2025-11-17.md](docs/LATEST-UPDATES-2025-11-17.md) for Sprint 13-14 features, Docker integration testing, cost optimization, and production-ready tools!
+
 ## Features
 
 - **LLM-Powered Test Generation**: Uses OpenAI or Anthropic LLMs to understand natural language test descriptions

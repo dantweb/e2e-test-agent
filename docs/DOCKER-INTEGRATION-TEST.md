@@ -25,7 +25,14 @@ This integration test validates:
 ### Basic Usage
 
 ```bash
+# Keep generated files (default)
 ./test-docker-integration.sh
+
+# Keep generated files (explicit)
+./test-docker-integration.sh --no-cleanup
+
+# Delete generated files after test
+./test-docker-integration.sh --cleanup
 ```
 
 ### What the Script Does
@@ -39,7 +46,7 @@ This integration test validates:
    - CLI arguments: `--src=tests/realworld/shopping-flow.yaml --output=_generated --oxtest`
 5. **Verifies output**: Checks that `.ox.test` files are generated
 6. **Validates content**: Ensures files contain valid OXTest commands
-7. **Cleans up**: Removes container and generated files
+7. **Cleans up**: Removes container (keeps generated files by default)
 
 ### Docker Command
 
@@ -48,7 +55,8 @@ The script executes the following Docker command:
 ```bash
 docker run --rm \
   --name e2e-test-integration-$$ \
-  --env-file .env.test \
+  --user $(id -u):$(id -g) \
+  --env-file .env \
   -v $(pwd):/workspace \
   e2e-test-agent:latest \
   --src=tests/realworld/shopping-flow.yaml \
@@ -56,7 +64,31 @@ docker run --rm \
   --oxtest
 ```
 
+**Note**: The `--user $(id -u):$(id -g)` flag runs the container as your current user, preventing permission issues with generated files.
+
 ## Configuration
+
+### Command-Line Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| (none) | Keep generated files | ✅ Default |
+| `--no-cleanup` | Keep generated files (explicit) | Same as default |
+| `--cleanup` | Delete generated files after test | ❌ Optional |
+
+**Examples**:
+```bash
+# Keep generated files for inspection (default)
+./test-docker-integration.sh
+
+# Same as above (explicit)
+./test-docker-integration.sh --no-cleanup
+
+# Clean up everything after test
+./test-docker-integration.sh --cleanup
+```
+
+### Script Variables
 
 You can customize the test by editing the script variables:
 
@@ -64,12 +96,12 @@ You can customize the test by editing the script variables:
 DOCKER_IMAGE="e2e-test-agent:latest"  # Docker image name
 TEST_YAML="tests/realworld/shopping-flow.yaml"  # Input YAML file
 OUTPUT_DIR="_generated"  # Output directory for generated files
-ENV_FILE=".env.test"  # Environment file
+ENV_FILE=".env"  # Environment file
 ```
 
 ## Environment File
 
-The `.env.test` file should contain the necessary API keys and configuration:
+The `.env` file should contain the necessary API keys and configuration:
 
 ```env
 # LLM Provider Configuration
@@ -203,13 +235,37 @@ docker-integration:
 3. Build manually: `docker build -t e2e-test-agent:latest .`
 4. Check build logs for errors
 
-### Permission Denied
+### Permission Denied (Script)
 
 **Problem**: `permission denied` error when running script
 
 **Solution**:
 ```bash
 chmod +x test-docker-integration.sh
+```
+
+### Permission Denied (File Creation)
+
+**Problem**: `EACCES: permission denied, open '_generated/...'` when Docker container tries to write files
+
+**Solution**:
+The script automatically runs the container as your current user using `--user $(id -u):$(id -g)` to prevent this issue. If you're running Docker manually, make sure to include this flag:
+
+```bash
+docker run --rm \
+  --user $(id -u):$(id -g) \
+  --env-file .env.test \
+  -v $(pwd):/workspace \
+  e2e-test-agent:latest \
+  --src=tests/realworld/shopping-flow.yaml \
+  --output=_generated \
+  --oxtest
+```
+
+**Alternative**: If the above doesn't work, ensure the output directory has write permissions:
+```bash
+mkdir -p _generated
+chmod 755 _generated
 ```
 
 ### No Files Generated
