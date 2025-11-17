@@ -98,7 +98,7 @@ export class FailureAnalyzer {
     if (options.captureScreenshot) {
       try {
         context.screenshot = await page.screenshot({ fullPage: true });
-      } catch (error) {
+      } catch {
         // Ignore screenshot errors - page might be closed
       }
     }
@@ -107,7 +107,7 @@ export class FailureAnalyzer {
     if (options.captureHTML) {
       try {
         context.pageHTML = await page.content();
-      } catch (error) {
+      } catch {
         // Ignore HTML capture errors - page might be closed
       }
     }
@@ -138,7 +138,7 @@ export class FailureAnalyzer {
       const unique = [...new Set(selectors)];
       const prioritized = this.prioritizeSelectors(unique);
       return prioritized.slice(0, maxSelectors);
-    } catch (error) {
+    } catch {
       // Page might be closed or evaluation failed
       return [];
     }
