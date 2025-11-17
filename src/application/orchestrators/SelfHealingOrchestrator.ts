@@ -78,7 +78,6 @@ export class SelfHealingOrchestrator {
     const startTime = Date.now();
     const failureHistory: FailureContext[] = [];
     let currentContent = oxtestContent;
-    let lastResult: ExecutionResult | null = null;
 
     for (let attempt = 1; attempt <= options.maxAttempts; attempt++) {
       // Parse the current test content
@@ -87,7 +86,6 @@ export class SelfHealingOrchestrator {
 
       // Execute the test
       const result = await executionFn(subtask);
-      lastResult = result;
 
       // If successful, we're done!
       if (result.success) {
@@ -116,7 +114,11 @@ export class SelfHealingOrchestrator {
 
         // If we haven't exhausted attempts, refine the test
         if (attempt < options.maxAttempts) {
-          currentContent = await this.refinementEngine.refine(testName, failureContext, failureHistory.slice(0, -1));
+          currentContent = await this.refinementEngine.refine(
+            testName,
+            failureContext,
+            failureHistory.slice(0, -1)
+          );
         }
       } else {
         // Without a page object, we can't analyze or refine
