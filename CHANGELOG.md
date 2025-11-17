@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] - 2025-11-17
+
+### 🔐 Security
+- **CRITICAL**: Removed exposed DeepSeek API key from entire git history using `git filter-branch`
+- Force-pushed cleaned history to remote repository
+- Updated all tags (v1.0.0, v1.1.1) with cleaned commits
+- Added comprehensive security incident documentation
+
+### 🐛 Bug Fixes
+- **Release Workflow**: Fixed GitHub Actions release failing with 404 errors when uploading assets
+  - Removed `dist/**/*` from release assets (causing upload failures)
+  - Now only uploads `.tgz` package file which contains all necessary files
+
+### ✨ New Features
+- **PayPal Integration Test**: Added complete PayPal payment flow test in correct YAML format
+  - Generated `.ox.test` and Playwright test files
+  - 8-step test: login → cart → checkout → PayPal iframe/popup → confirmation
+  - Based on PayPal module E2E tests
+
+### 📝 Documentation
+- Added `SECURITY-INCIDENT-2025-11-17.md` - Complete incident report with timeline
+- Added `REBASE-CONFLICT-RESOLUTION.md` - Guide for handling rebase conflicts after history rewrite
+- Added `force-push-clean-history.sh` - Safe force push script with verification
+- Added `.husky/pre-rebase` - Pre-rebase hook to prevent conflicts during security cleanups
+- Added `retrigger-release.sh` - Script for re-triggering failed releases
+
+### ⚠️ Breaking Changes
+- **Git history rewritten**: Users must update local repositories with `git fetch origin && git reset --hard origin/master`
+- **Tags updated**: v1.0.0 and v1.1.1 have new commit hashes
+
+### 🧪 Tests
+- All 695 tests passing (26 test suites)
+- Added integration test for PayPal YAML workflow
+
+---
+
 ## [1.1.0] - 2025-11-17
 
 ### 🤖 Self-Healing Tests - Automatic Test Refinement
