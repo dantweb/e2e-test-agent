@@ -103,7 +103,9 @@ describe('RefinementEngine', () => {
       const failureContext = createFailureContext();
       mockLLM.generate.mockRejectedValue(new Error('LLM API error'));
 
-      await expect(engine.refine('test', failureContext)).rejects.toThrow('Refinement failed: LLM API error');
+      await expect(engine.refine('test', failureContext)).rejects.toThrow(
+        'Refinement failed: LLM API error'
+      );
     });
 
     it('should strip code fences from LLM response', async () => {
