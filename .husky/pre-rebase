@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Pre-rebase Hook - Prevent rebasing with uncommitted changes
+# Also warns if rebase might conflict with security cleanup
+
+echo "🔍 Pre-rebase check..."
+
+# Check for uncommitted changes
+if ! git diff-index --quiet HEAD --; then
+    echo "❌ ERROR: You have uncommitted changes."
+    echo "   Please commit or stash your changes before rebasing."
+    exit 1
+fi
+
+# Check if we're in the middle of a security cleanup
+if [ -f "SECURITY-INCIDENT-*.md" ]; then
+    echo "⚠️  WARNING: Security incident report detected."
+    echo "   If you recently cleaned git history, avoid rebasing."
+    echo "   Consider using 'git push --force' instead."
+    echo ""
+    read -p "Continue with rebase? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "❌ Rebase aborted."
+        exit 1
+    fi
+fi
+
+echo "✅ Pre-rebase checks passed."
