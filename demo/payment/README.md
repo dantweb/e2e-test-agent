@@ -1,12 +1,25 @@
 # Shopping and Payment Demo
 
-Complete end-to-end test demonstrating the full customer journey on OXID eShop.
+Complete end-to-end tests demonstrating the full customer journey on OXID eShop.
 
-## Test Overview
+## Test Files
 
-**Test File**: `shopping-payment.yaml`
+### 1. `shopping-payment.yaml`
+**Type**: Complete Shopping Flow
 **Website**: https://osc2.oxid.shop
 **Test User**: redrobot@dantweb.dev / useruser
+**Payment**: Standard checkout (Cash on Delivery, Invoice)
+
+### 2. `paypal_payment.yaml`
+**Type**: PayPal Integration Test
+**Website**: https://osc2.oxid.shop
+**Test User**: redrobot@dantweb.dev / useruser
+**Payment**: PayPal (with popup handling)
+**Based On**: `/home/dtkachev/osc/strpwt7-oct21/paypal-module-6.3/tests/e2e/playwright/tests/e2e/PaypalPayment.spec.js`
+
+---
+
+## Test Overview - Shopping Payment
 
 ## Test Flow
 
@@ -246,6 +259,207 @@ For issues or questions:
 2. Verify selectors match current shop version
 3. Ensure test user has proper permissions
 4. Review OXID shop configuration
+
+---
+
+## PayPal Payment Test (`paypal_payment.yaml`)
+
+### Overview
+
+This test replicates the PayPal payment flow from the PayPal module E2E tests. It demonstrates a complete PayPal integration test including iframe interaction and popup handling.
+
+### Test Flow (8 Tasks)
+
+1. **User Login** - Authenticate with shop credentials
+2. **Add to Cart** - Add products to shopping cart
+3. **Checkout** - Open cart and proceed to payment
+4. **Select PayPal** - Choose PayPal as payment method
+5. **Accept Terms & Order** - Accept T&C and place order
+6. **PayPal Iframe** - Detect PayPal button in iframe
+7. **PayPal Login** - Handle PayPal popup (manual/automated)
+8. **Verify Confirmation** - Confirm successful payment
+
+### Source Mapping
+
+Based on `PaypalPayment.spec.js`, the YAML maps these helper methods:
+
+| Helper Method | YAML Tasks |
+|---------------|------------|
+| `shopHelper.loginUser()` | Task 1 (user-login) |
+| `shopHelper.addItemsToCart()` | Task 2 (add-to-cart) |
+| `shopHelper.checkout()` | Task 3 (checkout) |
+| `shopHelper.selectPaymentMethod('PayPal')` | Task 4 (select-paypal) |
+| `shopHelper.nextStep()` | Task 4 (select-paypal) |
+| `shopHelper.acceptTerms()` | Task 5 (accept-terms-order) |
+| `shopHelper.orderNow()` | Task 5 (accept-terms-order) |
+| `paypalHelper.clickPaypalButtonInIframe('Paypal')` | Task 6 (paypal-iframe) |
+| `paypalHelper.handlePopup()` | Task 7 (paypal-login) |
+| `paypalHelper.verifyThankYouPage()` | Task 8 (verify-thankyou) |
+
+### Special Requirements
+
+#### Environment Variables
+
+```bash
+export PAYPAL_EMAIL="your-sandbox-email@example.com"
+export PAYPAL_PASSWORD="your-sandbox-password"
+```
+
+#### Known Limitations
+
+**⚠️ Manual Steps Required:**
+
+1. **Iframe Interaction (Task 6)**
+   - Clicking button inside PayPal iframe requires special handling
+   - Standard YAML `click` commands don't work inside iframes
+   - Requires custom JavaScript execution or Playwright frameLocator
+
+2. **Popup Handling (Task 7)**
+   - PayPal opens in new browser window/popup
+   - Requires context switching to popup window
+   - Login form interaction in separate context
+   - Waiting for popup to close
+
+#### Workarounds
+
+**Option 1: Manual Execution**
+- Run test until Task 6
+- Manually click PayPal button
+- Manually complete PayPal login
+- Test verifies final state
+
+**Option 2: Custom Extension**
+Extend the e2e-agent to support:
+
+```yaml
+# Future syntax for iframe handling
+- click_iframe css=iframe[title="PayPal"] selector=button[data-funding-source="paypal"]
+  description: Click PayPal button inside iframe
+
+# Future syntax for popup handling
+- handle_popup:
+    trigger: previous_click
+    actions:
+      - fill css=#email value=${PAYPAL_EMAIL}
+      - click css=#btnNext
+      - fill css=#password value=${PAYPAL_PASSWORD}
+      - click css=#btnLogin
+      - click css=button:has-text("Continue")
+```
+
+### Dependencies Learned from Original Test
+
+From `PaypalPayment.spec.js`:
+
+```javascript
+// Setup
+context = await browser.newContext({
+    extraHTTPHeaders: {
+        'ngrok-skip-browser-warning': 'true',
+    },
+});
+page.setDefaultTimeout(45000);  // Increased timeout for PayPal
+page.setDefaultNavigationTimeout(45000);
+```
+
+**YAML Equivalent:**
+- Task waits adjusted to 20-30 seconds for PayPal iframe loading
+- Fallback selectors for robustness
+- `continue_on_failure` for optional modals
+
+### Key Selectors from ShopHelper
+
+```typescript
+// Login
+.service-menu.showLogin              // User menu trigger
+form[name="login"] #loginEmail       // Email field
+form[name="login"] #loginPasword     // Password field (note typo!)
+div.menu-dropdowns > ul              // User logged in indicator
+
+// Cart & Checkout
+.productData .btn-default[type="submit"]  // Add to cart button
+.modal-dialog .modal-header .close        // Modal close button
+.btn-group.minibasket-menu button         // Cart dropdown
+.minibasket-menu-box .btn.btn-primary     // Checkout button
+
+// Payment
+input[type="radio"][value="oscpaypal"]    // PayPal radio button
+button:has-text("Next")                   // Next step button
+#checkAgbTop                              // Terms checkbox
+button:has-text("Order now")              // Order button
+
+// PayPal
+iframe[title="PayPal"]                    // PayPal iframe
+#thankyouPage                            // Confirmation page
+```
+
+### Key Selectors from PaypalHelper
+
+```typescript
+// PayPal Iframe Detection
+'iframe[title="PayPal"]'
+'iframe[title*="PayPal"]'
+'.component-frame.visible'
+'iframe[src*="paypal"]'
+
+// PayPal Popup Login
+'#email'           // Email field
+'#password'        // Password field
+'#btnNext'         // Next button (after email)
+'#btnLogin'        // Login button
+'button:has-text("Continue")'  // Continue button
+'[data-testid="submit-button-initial"]'  // Submit button
+
+// Thank You Page
+'#thankyouPage'
+'[data-testid="thank-you"]'
+'.thankyou'
+```
+
+### Execution Notes
+
+1. **Timeout Strategy**: Original test uses 45-second timeouts
+2. **Iframe Index**: PayPal button is in 2nd iframe (`index: 1`)
+3. **Popup Detection**: Listens for `popup` event before clicking
+4. **Login Flow**: Email → Next → Password → Login → Continue
+5. **Confirmation Wait**: Up to 60 seconds for thank you page
+
+### Running the Test
+
+```bash
+# Generate test
+e2e-agent generate \
+  --src demo/payment/paypal_payment.yaml \
+  --output demo/payment/_generated
+
+# Note: Will require manual intervention at Tasks 6-7
+# Or use custom iframe/popup handling code
+```
+
+### Future Enhancements
+
+To make this fully automated, the e2e-agent would need:
+
+1. **Iframe Support**
+   ```yaml
+   - click_in_frame:
+       iframe: css=iframe[title="PayPal"]
+       selector: css=button[data-funding-source="paypal"]
+   ```
+
+2. **Popup/Window Management**
+   ```yaml
+   - switch_to_popup:
+       timeout: 20000
+   - fill css=#email value=${PAYPAL_EMAIL}
+   - switch_to_main_window
+   ```
+
+3. **Wait for Popup Close**
+   ```yaml
+   - wait_for_popup_close:
+       timeout: 120000
+   ```
 
 ---
 
