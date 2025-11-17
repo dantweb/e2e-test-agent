@@ -1,4 +1,9 @@
 import { OxtestCommand } from './OxtestCommand';
+import {
+  TaskMetadata,
+  mergeMetadata,
+  validateMetadata,
+} from '../interfaces/TaskMetadata';
 
 /**
  * Domain entity representing a test task.
@@ -10,13 +15,15 @@ export class Task {
   public readonly subtasks: readonly string[];
   public readonly setup?: readonly OxtestCommand[];
   public readonly teardown?: readonly OxtestCommand[];
+  public readonly metadata: TaskMetadata;
 
   constructor(
     id: string,
     description: string,
     subtasks: string[] = [],
     setup?: OxtestCommand[],
-    teardown?: OxtestCommand[]
+    teardown?: OxtestCommand[],
+    metadata?: Partial<TaskMetadata>
   ) {
     // Validation
     if (!id || id.trim() === '') {
@@ -33,11 +40,16 @@ export class Task {
       throw new Error('Duplicate subtask IDs are not allowed');
     }
 
+    // Merge and validate metadata
+    const mergedMetadata = mergeMetadata(metadata);
+    validateMetadata(mergedMetadata);
+
     this.id = id;
     this.description = description;
     this.subtasks = Object.freeze([...subtasks]);
     this.setup = setup ? Object.freeze([...setup]) : undefined;
     this.teardown = teardown ? Object.freeze([...teardown]) : undefined;
+    this.metadata = mergedMetadata;
   }
 
   /**
@@ -70,7 +82,8 @@ export class Task {
       this.description,
       [...this.subtasks],
       this.setup ? this.setup.map(cmd => cmd.clone()) : undefined,
-      this.teardown ? this.teardown.map(cmd => cmd.clone()) : undefined
+      this.teardown ? this.teardown.map(cmd => cmd.clone()) : undefined,
+      { ...this.metadata }
     );
   }
 
@@ -81,6 +94,12 @@ export class Task {
     const parts = [`Task[${this.id}]: ${this.description}`];
     if (this.hasSubtasks()) {
       parts.push(` (${this.subtasks.length} subtasks)`);
+    }
+    if (this.metadata.priority && this.metadata.priority !== 0) {
+      parts.push(` [priority: ${this.metadata.priority}]`);
+    }
+    if (this.metadata.tags && this.metadata.tags.length > 0) {
+      parts.push(` [tags: ${this.metadata.tags.join(', ')}]`);
     }
     return parts.join('');
   }
