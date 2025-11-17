@@ -65,9 +65,7 @@ export const DEFAULT_TASK_METADATA: TaskMetadata = {
 /**
  * Merge metadata with defaults
  */
-export function mergeMetadata(
-  metadata?: Partial<TaskMetadata>
-): TaskMetadata {
+export function mergeMetadata(metadata?: Partial<TaskMetadata>): TaskMetadata {
   const merged = {
     ...DEFAULT_TASK_METADATA,
     ...metadata,

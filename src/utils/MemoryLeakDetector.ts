@@ -258,8 +258,7 @@ export class MemoryLeakDetector {
       return 0;
     }
 
-    const variance =
-      growths.reduce((sum, g) => sum + Math.pow(g - mean, 2), 0) / growths.length;
+    const variance = growths.reduce((sum, g) => sum + Math.pow(g - mean, 2), 0) / growths.length;
 
     const stdDev = Math.sqrt(variance);
     const coefficientOfVariation = stdDev / Math.abs(mean);
@@ -384,8 +383,7 @@ export class MemoryLeakDetector {
 
     if (absBytes < 1024) return `${sign}${absBytes} B`;
     if (absBytes < 1024 * 1024) return `${sign}${(absBytes / 1024).toFixed(2)} KB`;
-    if (absBytes < 1024 * 1024 * 1024)
-      return `${sign}${(absBytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (absBytes < 1024 * 1024 * 1024) return `${sign}${(absBytes / (1024 * 1024)).toFixed(2)} MB`;
     return `${sign}${(absBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   }
 

@@ -131,8 +131,7 @@ export class MultiModelLLMProvider implements ILLMProvider {
 
     // Check cache first
     if (this.cache && context?.enableCache !== false) {
-      const cacheKey =
-        context?.cacheKey || PromptCache.generateKey(prompt, context);
+      const cacheKey = context?.cacheKey || PromptCache.generateKey(prompt, context);
 
       const cached = this.cache.get(cacheKey);
       if (cached) {
@@ -150,7 +149,7 @@ export class MultiModelLLMProvider implements ILLMProvider {
       if (remaining !== undefined && remaining < context.maxCost) {
         throw new Error(
           `Insufficient budget: Need $${context.maxCost.toFixed(4)}, ` +
-          `Remaining $${remaining.toFixed(4)}`
+            `Remaining $${remaining.toFixed(4)}`
         );
       }
     }
@@ -208,8 +207,7 @@ export class MultiModelLLMProvider implements ILLMProvider {
 
           // Cache response
           if (this.cache && context?.enableCache !== false) {
-            const cacheKey =
-              context?.cacheKey || PromptCache.generateKey(prompt, context);
+            const cacheKey = context?.cacheKey || PromptCache.generateKey(prompt, context);
             this.cache.set(cacheKey, response);
           }
 
@@ -217,10 +215,7 @@ export class MultiModelLLMProvider implements ILLMProvider {
           return response;
         } catch (error) {
           lastError = error as Error;
-          console.warn(
-            `Provider ${config.name} attempt ${retry + 1}/${maxRetries} failed:`,
-            error
-          );
+          console.warn(`Provider ${config.name} attempt ${retry + 1}/${maxRetries} failed:`, error);
 
           if (retry < maxRetries - 1) {
             // Exponential backoff
@@ -262,9 +257,7 @@ export class MultiModelLLMProvider implements ILLMProvider {
         yield chunk;
       }
     } catch (error) {
-      throw new Error(
-        `Streaming failed from ${provider.name}: ${(error as Error).message}`
-      );
+      throw new Error(`Streaming failed from ${provider.name}: ${(error as Error).message}`);
     }
   }
 
@@ -302,16 +295,17 @@ export class MultiModelLLMProvider implements ILLMProvider {
   /**
    * Get statistics
    */
-  getStats() {
+  getStats(): typeof this.stats & {
+    successRate: number;
+    cacheHitRate: number;
+    costSummary?: ReturnType<LLMCostTracker['getSummary']>;
+    cacheStats?: ReturnType<PromptCache<LLMResponse>['getStats']>;
+  } {
     const successRate =
-      this.stats.totalRequests > 0
-        ? this.stats.successfulRequests / this.stats.totalRequests
-        : 0;
+      this.stats.totalRequests > 0 ? this.stats.successfulRequests / this.stats.totalRequests : 0;
 
     const cacheHitRate =
-      this.stats.totalRequests > 0
-        ? this.stats.cacheHits / this.stats.totalRequests
-        : 0;
+      this.stats.totalRequests > 0 ? this.stats.cacheHits / this.stats.totalRequests : 0;
 
     return {
       ...this.stats,
