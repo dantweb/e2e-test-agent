@@ -1,0 +1,315 @@
+# Complete Shopping Cart to Payment Flow - OXID eShop
+# Website: https://osc2.oxid.shop
+# Test Flow: Login → Browse → Add to Cart → Checkout → Payment → Order Confirmation
+
+name: Complete Shopping and Payment Flow
+description: End-to-end test covering the complete customer journey from login to order confirmation
+
+env:
+  BASE_URL: https://osc2.oxid.shop
+  USER_EMAIL: redrobot@dantweb.dev
+  USER_PASSWORD: useruser
+
+setup:
+  - navigate url=${BASE_URL}
+  - wait duration=2000
+
+tasks:
+  # ============================================
+  # TASK 1: User Authentication
+  # ============================================
+  - id: user-login
+    description: Login with existing user credentials
+    priority: 1
+    steps:
+      # Open login menu
+      - click css=.service-menu.showLogin
+        description: Click user center to open login form
+        fallback: css=.showLogin
+
+      - wait duration=1000
+
+      # Check if already logged in
+      - assert_visible css=div.menu-dropdowns > ul
+        description: Check if user menu is visible (already logged in)
+        continue_on_failure: true
+
+      # Fill login form
+      - fill css=form[name="login"] #loginEmail value=${USER_EMAIL}
+        description: Enter email address
+        fallback: css=#loginEmail
+
+      - fill css=form[name="login"] #loginPasword value=${USER_PASSWORD}
+        description: Enter password
+        fallback: css=#loginPasword
+
+      # Submit login
+      - click css=form[name="login"] button[type="submit"]
+        description: Click login button
+
+      - wait duration=3000
+
+      # Verify successful login
+      - assert_visible css=div.menu-dropdowns > ul
+        description: Verify user menu appears after login
+
+  # ============================================
+  # TASK 2: Browse Products and Add to Cart
+  # ============================================
+  - id: add-products-to-cart
+    description: Browse products and add items to shopping cart
+    priority: 2
+    depends_on: [user-login]
+    steps:
+      # Navigate to product category or search
+      - click css=a[href*="cl=alist"]
+        description: Click on a product category
+        continue_on_failure: true
+
+      - wait duration=2000
+
+      # Add first product to cart
+      - click css=.productData .btn-default[type="submit"]
+        description: Add first product to cart
+        fallback: css=button[type="submit"]:has-text("To cart")
+
+      - wait duration=2000
+
+      # Close modal if it appears
+      - click css=.modal-dialog .modal-header .close
+        description: Close add-to-cart confirmation modal
+        continue_on_failure: true
+
+      - wait duration=1000
+
+      # Add second product to cart (optional)
+      - scroll distance=500
+        description: Scroll down to see more products
+
+      - click css=.productData:nth-of-type(2) .btn-default[type="submit"]
+        description: Add second product to cart
+        continue_on_failure: true
+
+      - wait duration=2000
+
+      # Close modal again
+      - click css=.modal-dialog .modal-header .close
+        description: Close modal after adding second product
+        continue_on_failure: true
+
+      - wait duration=1000
+
+      # Verify cart has items
+      - assert_visible css=.btn-minibasket
+        description: Verify shopping cart icon is visible
+
+  # ============================================
+  # TASK 3: View Shopping Cart
+  # ============================================
+  - id: view-shopping-cart
+    description: Open and review shopping cart contents
+    priority: 3
+    depends_on: [add-products-to-cart]
+    steps:
+      # Open mini basket
+      - click css=.btn-minibasket
+        description: Click shopping cart icon to open mini basket
+        fallback: css=.miniBasket
+
+      - wait duration=2000
+
+      # Verify cart contents are visible
+      - assert_visible css=.miniBasket
+        description: Verify mini basket dropdown is visible
+
+      # Proceed to checkout
+      - click css=a[href*="cl=payment"]
+        description: Click checkout button in mini basket
+        fallback: css=a:has-text("Checkout")
+
+      - wait duration=3000
+
+  # ============================================
+  # TASK 4: Checkout - Shipping Address
+  # ============================================
+  - id: checkout-shipping
+    description: Verify and confirm shipping address
+    priority: 4
+    depends_on: [view-shopping-cart]
+    steps:
+      # Verify we're on the checkout page
+      - assert_visible css=.checkout-step
+        description: Verify checkout page is loaded
+        continue_on_failure: true
+
+      # Verify shipping address section
+      - assert_visible css=.shipping-address
+        description: Verify shipping address section is visible
+        continue_on_failure: true
+
+      # If address form is visible, ensure required fields are filled
+      - fill css=#invadr\\[oxuser__oxfname\\] value=Test
+        description: Fill first name if empty
+        continue_on_failure: true
+
+      - fill css=#invadr\\[oxuser__oxlname\\] value=User
+        description: Fill last name if empty
+        continue_on_failure: true
+
+      - fill css=#invadr\\[oxuser__oxstreet\\] value=Test Street 123
+        description: Fill street address if empty
+        continue_on_failure: true
+
+      - fill css=#invadr\\[oxuser__oxzip\\] value=12345
+        description: Fill ZIP code if empty
+        continue_on_failure: true
+
+      - fill css=#invadr\\[oxuser__oxcity\\] value=Berlin
+        description: Fill city if empty
+        continue_on_failure: true
+
+      - wait duration=1000
+
+  # ============================================
+  # TASK 5: Select Payment Method
+  # ============================================
+  - id: select-payment
+    description: Choose payment method for the order
+    priority: 5
+    depends_on: [checkout-shipping]
+    steps:
+      # Verify we're on payment method page
+      - assert_visible css=#payment
+        description: Verify payment method section is visible
+        continue_on_failure: true
+
+      # Select payment method - trying multiple common options
+      - click css=#payment_oxidcashondel
+        description: Select Cash on Delivery payment
+        continue_on_failure: true
+        fallback: css=input[name="paymentid"][value="oxidcashondel"]
+
+      # Alternative: Select invoice payment
+      - click css=#payment_oxidinvoice
+        description: Select Invoice payment (alternative)
+        continue_on_failure: true
+
+      # Alternative: Select PayPal if available
+      - click css=#payment_oscpaypal
+        description: Select PayPal payment (alternative)
+        continue_on_failure: true
+
+      - wait duration=2000
+
+      # Click Next button to proceed
+      - click css=button.btn-highlight:has-text("Next")
+        description: Click Next to proceed to order summary
+        fallback: css=.btn-highlight:nth-child(2)
+
+      - wait duration=3000
+
+  # ============================================
+  # TASK 6: Order Summary and Confirmation
+  # ============================================
+  - id: order-summary
+    description: Review order summary and place order
+    priority: 6
+    depends_on: [select-payment]
+    steps:
+      # Verify order summary page
+      - assert_visible css=.order-summary
+        description: Verify order summary section is visible
+        continue_on_failure: true
+
+      # Verify cart total is displayed
+      - assert_visible css=.cart-total
+        description: Verify order total is displayed
+        continue_on_failure: true
+
+      # Accept Terms and Conditions
+      - click css=#checkAgbTop
+        description: Accept Terms and Conditions checkbox
+        fallback: css=input[name="ord_agb"]
+
+      - wait duration=1000
+
+      # Verify T&C checkbox is checked
+      - assert_visible css=#checkAgbTop:checked
+        description: Verify Terms and Conditions are accepted
+        continue_on_failure: true
+
+      # Place the order
+      - click css=button.btn-highlight:has-text("Order now")
+        description: Click Order Now button to complete purchase
+        fallback: css=.btn-highlight:nth-child(3)
+
+      - wait duration=5000
+
+  # ============================================
+  # TASK 7: Order Confirmation
+  # ============================================
+  - id: order-confirmation
+    description: Verify successful order placement
+    priority: 7
+    depends_on: [order-summary]
+    steps:
+      # Verify thank you page
+      - assert_visible css=.thankyou
+        description: Verify thank you page is displayed
+        fallback: css=h1:has-text("Thank you")
+
+      # Verify order number is displayed
+      - assert_visible css=.order-number
+        description: Verify order number is shown
+        continue_on_failure: true
+
+      # Verify order confirmation message
+      - assert_text css=.confirmation-message text="Your order has been received"
+        description: Verify order confirmation message
+        continue_on_failure: true
+
+      - wait duration=2000
+
+      # Take screenshot of confirmation page
+      - screenshot filename=order-confirmation.png
+        description: Capture order confirmation for records
+
+teardown:
+  # Optional: Logout or navigate back to home
+  - click css=.service-menu.showLogin
+    description: Open user menu
+    continue_on_failure: true
+
+  - click css=a:has-text("Logout")
+    description: Logout user
+    continue_on_failure: true
+
+  - wait duration=1000
+
+# Additional validation rules
+validations:
+  - type: exists
+    selector: css=div.menu-dropdowns > ul
+    description: User must be logged in
+
+  - type: exists
+    selector: css=.btn-minibasket
+    description: Shopping cart must be accessible
+
+  - type: exists
+    selector: css=.order-summary
+    description: Order summary must be visible before placing order
+
+  - type: url
+    pattern: "thankyou|checkout"
+    description: Should be on checkout or thank you page at the end
+
+metadata:
+  tags: [e2e, shopping, payment, checkout, oxid]
+  category: integration
+  priority: high
+  estimated_duration: 120s
+  browser: chromium
+  viewport:
+    width: 1920
+    height: 1080
