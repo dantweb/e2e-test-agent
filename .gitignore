@@ -50,6 +50,12 @@ Thumbs.db
 
 # Generated files
 manifest.json
+_generated/
+_generated_result/
+
+# Keep historical generated results (with timestamps)
+!_generated_result_*/
+!_generated_*/
 
 # Temporary files
 tmp/
