@@ -1,9 +1,10 @@
 # Shopping and Payment Demo
 
-Complete end-to-end tests demonstrating the full customer journey on OXID eShop.
+Complete end-to-end test demonstrating the full customer journey on OXID eShop.
 
-## Test Files
+## Test Overview
 
+**Test File**: `shopping-payment.yaml`
 ### 1. `shopping-payment.yaml`
 **Type**: Complete Shopping Flow
 **Website**: https://osc2.oxid.shop
