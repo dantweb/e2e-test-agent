@@ -77,7 +77,10 @@ class CLI {
       .option('--format <format>', 'Output format (oxtest|playwright)', 'oxtest')
       .option('--oxtest', 'Also generate .ox.test files alongside Playwright tests', false)
       .option('--execute', 'Execute generated OXTest files after generation', false)
-      .option('--tests <pattern>', 'Glob pattern for which .ox.test files to execute (e.g., "*.ox.test" or "paypal*.ox.test")')
+      .option(
+        '--tests <pattern>',
+        'Glob pattern for which .ox.test files to execute (e.g., "*.ox.test" or "paypal*.ox.test")'
+      )
       .option(
         '--reporter <types>',
         'Report formats (comma-separated: json,html,junit,console)',
@@ -129,7 +132,9 @@ class CLI {
         console.error('    e2e-test-agent --execute --output=<directory>');
         console.error('');
         console.error('  Execute specific .ox.test files:');
-        console.error('    e2e-test-agent --execute --output=<directory> --tests="paypal*.ox.test"');
+        console.error(
+          '    e2e-test-agent --execute --output=<directory> --tests="paypal*.ox.test"'
+        );
         console.error('');
         process.exit(1);
       }
@@ -425,9 +430,10 @@ Generate ONLY the complete test code, no explanations. The code should be produc
 
           // Note: We don't execute commands here because the decomposition engine
           // already sees the current page state. Each job decomposition gets fresh HTML.
-
         } catch (error) {
-          console.warn(`   ⚠️  Warning: Could not decompose step "${job.name}": ${(error as Error).message}`);
+          console.warn(
+            `   ⚠️  Warning: Could not decompose step "${job.name}": ${(error as Error).message}`
+          );
           oxtestLines.push(`# Error: Could not decompose this step`);
           oxtestLines.push(`# Manual implementation required for: ${job.prompt}`);
         }
@@ -436,7 +442,6 @@ Generate ONLY the complete test code, no explanations. The code should be produc
       }
 
       return oxtestLines.join('\n');
-
     } finally {
       await page.close();
       await context.close();
