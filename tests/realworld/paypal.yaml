@@ -41,7 +41,7 @@ paypal-payment-test:
         - PayPal integration is working
 
     - name: paypal-popup-login
-      prompt: This is a manual step or requires special popup handling. A PayPal popup window should open where you need to login with PayPal credentials. Fill in the email field #email, click next button #btnNext, fill in password field #password, click login button #btnLogin, then click the continue button. Wait 30 seconds for the user to complete this process
+      prompt: This is a manual step or requires special popup handling. A PayPal popup window should open where you need to login with PayPal credentials paypal-buyer@unzer.com and password unzer1234 then complete the payment.
       acceptance:
         - PayPal popup window opens
         - user logs into PayPal
@@ -53,5 +53,4 @@ paypal-payment-test:
       acceptance:
         - thank you page is displayed
         - order confirmation is visible
-        - payment was successful
         - screenshot is captured

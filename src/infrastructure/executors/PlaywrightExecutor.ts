@@ -18,9 +18,20 @@ export class PlaywrightExecutor {
   private browser?: Browser;
   private page?: Page;
   private readonly selector: MultiStrategySelector;
+  private verbose: boolean = false;
 
-  constructor() {
+  constructor(verbose: boolean = false) {
     this.selector = new MultiStrategySelector();
+    this.verbose = verbose;
+    this.selector.setVerbose(verbose);
+  }
+
+  /**
+   * Enable or disable verbose logging.
+   */
+  public setVerbose(verbose: boolean): void {
+    this.verbose = verbose;
+    this.selector.setVerbose(verbose);
   }
 
   /**
@@ -97,16 +108,31 @@ export class PlaywrightExecutor {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
+        if (this.verbose && attempt > 0) {
+          console.log(`      🔄 Retry attempt ${attempt + 1}/${maxRetries} for: ${command.type}`);
+        }
         await this.executeCommandOnce(command, page);
+        if (this.verbose) {
+          console.log(`      ✅ Command executed successfully: ${command.type}`);
+        }
         return; // Success
       } catch (error) {
         lastError = error as Error;
+        if (this.verbose) {
+          console.log(`      ❌ Attempt ${attempt + 1} failed: ${lastError.message}`);
+        }
         if (attempt < maxRetries - 1) {
+          if (this.verbose) {
+            console.log(`      ⏳ Waiting 1s before retry...`);
+          }
           await page.waitForTimeout(1000); // Wait before retry
         }
       }
     }
 
+    if (this.verbose) {
+      console.log(`      ⛔ All ${maxRetries} attempts failed`);
+    }
     throw lastError;
   }
 

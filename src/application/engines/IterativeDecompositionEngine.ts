@@ -17,6 +17,7 @@ import { OxtestCommand } from '../../domain/entities/OxtestCommand';
 export class IterativeDecompositionEngine {
   private readonly promptBuilder: OxtestPromptBuilder;
   private readonly model: string;
+  private readonly verbose: boolean;
 
   /**
    * Creates engine for decomposing instructions into OXTest commands.
@@ -25,15 +26,18 @@ export class IterativeDecompositionEngine {
    * @param htmlExtractor HTML extractor for page context
    * @param oxtestParser Parser for OXTest syntax
    * @param model Model name (required, validated by provider)
+   * @param verbose Enable verbose logging (default: false)
    */
   constructor(
     private readonly llmProvider: ILLMProvider,
     private readonly htmlExtractor: IHTMLExtractor,
     private readonly oxtestParser: OxtestParser,
-    model: string
+    model: string,
+    verbose: boolean = false
   ) {
     this.promptBuilder = new OxtestPromptBuilder();
     this.model = model;
+    this.verbose = verbose;
   }
 
   /**
@@ -46,17 +50,45 @@ export class IterativeDecompositionEngine {
    */
   public async decompose(instruction: string): Promise<Subtask> {
     try {
+      if (this.verbose) {
+        console.log(`   🔍 Extracting HTML from current page...`);
+      }
       const html = await this.htmlExtractor.extractSimplified();
+
+      if (this.verbose) {
+        console.log(`   📊 HTML extracted: ${html.length} characters`);
+        console.log(`   🤖 Generating commands for: "${instruction}"`);
+      }
 
       const systemPrompt = this.promptBuilder.buildSystemPrompt();
       const userPrompt = this.promptBuilder.buildDiscoveryPrompt(instruction, html);
+
+      if (this.verbose) {
+        console.log(`   💬 Sending prompt to LLM (model: ${this.model})...`);
+      }
 
       const response = await this.llmProvider.generate(userPrompt, {
         systemPrompt,
         model: this.model,
       });
 
+      if (this.verbose) {
+        console.log(`   ✅ LLM response received`);
+        console.log(`   📝 Parsing OXTest commands...`);
+      }
+
       const commands = this.oxtestParser.parseContent(response.content);
+
+      if (this.verbose) {
+        console.log(`   ✓ Parsed ${commands.length} command(s)`);
+        if (commands.length > 0) {
+          commands.forEach((cmd, idx) => {
+            console.log(
+              `      ${idx + 1}. ${cmd.type} ${cmd.selector ? `${cmd.selector.strategy}=${cmd.selector.value}` : ''}`
+            );
+          });
+        }
+      }
 
       // Handle empty commands case
       if (commands.length === 0) {

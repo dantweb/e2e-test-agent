@@ -8,6 +8,15 @@ import { SelectorSpec } from '../../domain/entities/SelectorSpec';
  * to alternative strategies if the primary fails.
  */
 export class MultiStrategySelector {
+  private verbose: boolean = false;
+
+  /**
+   * Enable or disable verbose logging.
+   */
+  public setVerbose(verbose: boolean): void {
+    this.verbose = verbose;
+  }
+
   /**
    * Locates an element using the provided selector spec.
    *
@@ -18,23 +27,47 @@ export class MultiStrategySelector {
    */
   public async locate(page: Page, selector: SelectorSpec): Promise<Locator> {
     // Try primary strategy
+    if (this.verbose) {
+      console.log(`         🎯 Trying primary selector: ${selector.strategy}=${selector.value}`);
+    }
     const primaryLocator = this.getLocator(page, selector.strategy, selector.value);
 
     try {
       // Use .first() to handle cases where multiple elements match
       const firstLocator = primaryLocator.first();
       await firstLocator.waitFor({ timeout: 2000, state: 'attached' });
+      if (this.verbose) {
+        console.log(`         ✅ Primary selector found element`);
+      }
       return firstLocator;
-    } catch {
+    } catch (error) {
+      if (this.verbose) {
+        console.log(`         ❌ Primary selector failed: ${(error as Error).message}`);
+      }
       // Try fallbacks
       if (selector.fallbacks && selector.fallbacks.length > 0) {
-        for (const fallback of selector.fallbacks) {
+        if (this.verbose) {
+          console.log(`         🔄 Trying ${selector.fallbacks.length} fallback selector(s)...`);
+        }
+        for (let i = 0; i < selector.fallbacks.length; i++) {
+          const fallback = selector.fallbacks[i];
           try {
+            if (this.verbose) {
+              console.log(`         🎯 Fallback ${i + 1}: ${fallback.strategy}=${fallback.value}`);
+            }
             const fallbackLocator = this.getLocator(page, fallback.strategy, fallback.value);
             const firstFallbackLocator = fallbackLocator.first();
             await firstFallbackLocator.waitFor({ timeout: 2000, state: 'attached' });
+            if (this.verbose) {
+              console.log(`         ✅ Fallback ${i + 1} found element!`);
+            }
             return firstFallbackLocator;
-          } catch {
+          } catch (fallbackError) {
+            if (this.verbose) {
+              console.log(
+                `         ❌ Fallback ${i + 1} failed: ${(fallbackError as Error).message}`
+              );
+            }
             // Continue to next fallback
             continue;
           }

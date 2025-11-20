@@ -224,7 +224,8 @@ class CLI {
             llmProvider,
             testName,
             testSpec.jobs,
-            testSpec.url
+            testSpec.url,
+            options.verbose
           );
 
           const oxtestFileName = `${testName}.ox.test`;
@@ -374,17 +375,27 @@ Generate ONLY the complete test code, no explanations. The code should be produc
     llmProvider: OpenAILLMProvider,
     testName: string,
     jobs: JobSpec[],
-    baseUrl: string
+    baseUrl: string,
+    verbose: boolean = false
   ): Promise<string> {
     // Launch browser to extract HTML context
+    if (verbose) {
+      console.log('   🌐 Launching headless browser...');
+    }
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
     const page = await context.newPage();
 
     try {
       // Navigate to the base URL to get initial HTML
+      if (verbose) {
+        console.log(`   🔗 Navigating to ${baseUrl}...`);
+      }
       await page.goto(baseUrl);
       await page.waitForLoadState('domcontentloaded');
+      if (verbose) {
+        console.log('   ✓ Page loaded');
+      }
 
       // Create HTML extractor
       const htmlExtractor = new HTMLExtractor(page);
@@ -394,7 +405,13 @@ Generate ONLY the complete test code, no explanations. The code should be produc
       const model = process.env.OPENAI_MODEL!;
 
       // Create decomposition engine with HTML context
-      const engine = new IterativeDecompositionEngine(llmProvider, htmlExtractor, parser, model);
+      const engine = new IterativeDecompositionEngine(
+        llmProvider,
+        htmlExtractor,
+        parser,
+        model,
+        verbose
+      );
 
       // Generate OXTest commands for each job using HTML context
       const oxtestLines: string[] = [];
@@ -410,10 +427,21 @@ Generate ONLY the complete test code, no explanations. The code should be produc
         const job = jobs[i];
         oxtestLines.push(`# Step: ${job.name}`);
 
+        if (verbose) {
+          console.log(`\n   📋 Processing job ${i + 1}/${jobs.length}: "${job.name}"`);
+        }
+
         // Build instruction with acceptance criteria
         let instruction = job.prompt;
         if (job.acceptance && job.acceptance.length > 0) {
           instruction += '\nAcceptance criteria: ' + job.acceptance.join(', ');
+        }
+
+        if (verbose) {
+          console.log(`   📝 Instruction: ${job.prompt}`);
+          if (job.acceptance && job.acceptance.length > 0) {
+            console.log(`   ✓ Acceptance: ${job.acceptance.join(', ')}`);
+          }
         }
 
         try {
@@ -509,7 +537,7 @@ Generate ONLY the complete test code, no explanations. The code should be produc
     console.log(`📋 Found ${oxtestFiles.length} test file(s) to execute`);
 
     // Initialize executor
-    const executor = new PlaywrightExecutor();
+    const executor = new PlaywrightExecutor(verbose);
     const parser = new OxtestParser();
 
     try {

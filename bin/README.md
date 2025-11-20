@@ -2,6 +2,11 @@
 
 Convenient shell scripts for running the E2E Test Agent.
 
+## Scripts Overview
+
+- **run.sh** - Generate and execute tests from YAML specifications
+- **run_tests.sh** - Run existing Playwright tests with interactive UI
+
 ## run.sh
 
 Main script for generating and executing tests.
@@ -196,4 +201,120 @@ To make it globally accessible, add to your PATH or create an alias:
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
 alias e2e-run='/path/to/e2e-agent/bin/run.sh'
+alias e2e-test='/path/to/e2e-agent/bin/run_tests.sh'
 ```
+
+---
+
+## run_tests.sh
+
+Playwright test runner with interactive UI by default.
+
+**Key Features:**
+- Runs Playwright tests with interactive UI (default)
+- Simple command to test generated files
+- Headless mode available with `--no-ui` flag
+- Supports test patterns and specific files
+
+### Quick Start
+
+```bash
+# Run all tests in _generated with interactive UI (default)
+./bin/run_tests.sh
+
+# Run tests without UI (headless mode)
+./bin/run_tests.sh --no-ui
+
+# Run specific test file with UI
+./bin/run_tests.sh --tests _generated/paypal-payment-test.spec.ts
+
+# Show help
+./bin/run_tests.sh --help
+```
+
+### Common Use Cases
+
+#### 1. Run all generated tests with UI
+
+```bash
+./bin/run_tests.sh
+```
+
+Opens Playwright's interactive UI where you can:
+- See all available tests
+- Run tests individually or all at once
+- View test execution in real-time
+- Debug test failures
+- View screenshots and traces
+
+#### 2. Run tests in headless mode (CI/CD)
+
+```bash
+./bin/run_tests.sh --no-ui
+```
+
+Runs all tests without UI - perfect for automated CI/CD pipelines.
+
+#### 3. Run specific test file with UI
+
+```bash
+./bin/run_tests.sh --tests _generated/paypal-payment-test.spec.ts
+```
+
+#### 4. Run test pattern without UI
+
+```bash
+./bin/run_tests.sh --tests "_generated/paypal*.spec.ts" --no-ui
+```
+
+#### 5. Run tests from custom output directory
+
+```bash
+./bin/run_tests.sh --tests _custom_output
+```
+
+### All Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--tests <dir>` | Test directory or pattern | `_generated` |
+| `--no-ui` | Run in headless mode | UI mode enabled |
+| `--help` | Show help message | - |
+
+### Workflow Example
+
+Complete workflow from generation to testing:
+
+```bash
+# Step 1: Generate tests from YAML (without execution)
+./bin/run.sh tests/realworld/paypal.yaml --no-execute
+
+# Step 2: Run the generated tests with interactive UI
+./bin/run_tests.sh
+
+# Step 3: For CI/CD, run without UI
+./bin/run_tests.sh --no-ui
+```
+
+### Notes
+
+- The script uses `npx playwright test` under the hood
+- UI mode uses Playwright's `--ui` flag for interactive testing
+- Headless mode runs tests in the background
+- Test files must be `.spec.ts` Playwright format
+- Make sure Playwright is installed: `npm install`
+
+### Troubleshooting
+
+**Error: Test path not found**
+```bash
+# Make sure you generated tests first
+./bin/run.sh tests/realworld/paypal.yaml --no-execute
+```
+
+**Playwright not installed**
+```bash
+npm install
+npx playwright install
+```
+
