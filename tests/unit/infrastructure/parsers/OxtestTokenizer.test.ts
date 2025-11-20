@@ -52,6 +52,19 @@ describe('OxtestTokenizer', () => {
       expect(tokens[1].fallback?.value).toBe('button[type=submit]');
     });
 
+    it('should handle fallback selectors with equals format', () => {
+      const line = 'click css=.loginBtn fallback=text="Login"';
+      const tokens = tokenizer.tokenize(line);
+
+      expect(tokens[0].type).toBe('COMMAND');
+      expect(tokens[1].type).toBe('SELECTOR');
+      expect(tokens[1].strategy).toBe('css');
+      expect(tokens[1].value).toBe('.loginBtn');
+      expect(tokens[1].fallback).toBeDefined();
+      expect(tokens[1].fallback?.strategy).toBe('text');
+      expect(tokens[1].fallback?.value).toBe('Login');
+    });
+
     it('should handle quoted values with spaces', () => {
       const line = 'type css=input value="Hello World"';
       const tokens = tokenizer.tokenize(line);

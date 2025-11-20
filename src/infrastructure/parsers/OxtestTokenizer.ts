@@ -158,12 +158,32 @@ export class OxtestTokenizer {
     let consumed = 1;
     let fallbackToken: Token | undefined;
 
-    // Check for fallback
-    if (index + 1 < parts.length && parts[index + 1] === 'fallback') {
-      if (index + 2 < parts.length && this.isSelectorToken(parts[index + 2])) {
-        const fallbackResult = this.parseSelector(parts, index + 2);
-        fallbackToken = fallbackResult.token;
-        consumed += 2 + (fallbackResult.consumed - 1); // "fallback" keyword + selector + any nested fallbacks
+    // Check for fallback - supports both "fallback css=..." and "fallback=css=..."
+    if (index + 1 < parts.length) {
+      const nextPart = parts[index + 1];
+
+      // Format 1: "fallback css=..."
+      if (nextPart === 'fallback') {
+        if (index + 2 < parts.length && this.isSelectorToken(parts[index + 2])) {
+          const fallbackResult = this.parseSelector(parts, index + 2);
+          fallbackToken = fallbackResult.token;
+          consumed += 2 + (fallbackResult.consumed - 1); // "fallback" keyword + selector + any nested fallbacks
+        }
+      }
+      // Format 2: "fallback=css=..."
+      else if (nextPart.startsWith('fallback=')) {
+        const fallbackSelector = nextPart.substring('fallback='.length);
+        if (this.isSelectorToken(fallbackSelector)) {
+          // Parse the fallback selector inline
+          const [fbStrategy, ...fbValueParts] = fallbackSelector.split('=');
+          const fbValue = fbValueParts.join('=');
+          fallbackToken = {
+            type: 'SELECTOR',
+            strategy: fbStrategy,
+            value: fbValue,
+          };
+          consumed += 1;
+        }
       }
     }
 

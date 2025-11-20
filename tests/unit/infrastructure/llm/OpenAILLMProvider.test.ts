@@ -18,8 +18,14 @@ describe('OpenAILLMProvider', () => {
       },
     } as any;
 
-    // Create provider with mock client
-    provider = new OpenAILLMProvider('fake-api-key', mockClient);
+    // Create provider with mock client (new config-based constructor)
+    provider = new OpenAILLMProvider(
+      {
+        apiKey: 'fake-api-key',
+        model: 'gpt-4o',
+      },
+      mockClient
+    );
   });
 
   afterEach(() => {
@@ -333,8 +339,11 @@ describe('OpenAILLMProvider', () => {
   });
 
   describe('constructor', () => {
-    it('should create instance with API key', () => {
-      const newProvider = new OpenAILLMProvider('test-key');
+    it('should create instance with config', () => {
+      const newProvider = new OpenAILLMProvider({
+        apiKey: 'test-key',
+        model: 'gpt-4o',
+      });
       expect(newProvider).toBeInstanceOf(OpenAILLMProvider);
     });
 
@@ -347,7 +356,13 @@ describe('OpenAILLMProvider', () => {
         },
       } as any;
 
-      const newProvider = new OpenAILLMProvider('test-key', customClient);
+      const newProvider = new OpenAILLMProvider(
+        {
+          apiKey: 'test-key',
+          model: 'gpt-4o',
+        },
+        customClient
+      );
       expect(newProvider).toBeInstanceOf(OpenAILLMProvider);
     });
   });

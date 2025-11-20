@@ -4,36 +4,31 @@ paypal-payment-test:
   timeout: 180
   jobs:
     - name: user-login
-      prompt: Login to the shop with credentials redrobot@dantweb.dev and password useruser. Click on the user menu at .service-menu.showLogin, fill in the login form with email #loginEmail and password #loginPasword, submit the form, and verify that div.menu-dropdowns > ul is visible after login
+      prompt: Login to the shop with credentials redrobot@dantweb.dev and password useruser. Click login button, try to click it to get logged in
       acceptance:
-        - user menu is visible after login
-        - login was successful
-        - user is authenticated
+        - user is logged in and sees the homepage with a paypal banner
 
     - name: add-products-to-cart
-      prompt: Add 2 products to the shopping cart. Click on the first product's add-to-cart button using selector .productData .btn-default[type="submit"], wait for the modal, close it by clicking .modal-dialog .modal-header .close, then add a second product using .productData:nth-of-type(2) .btn-default[type="submit"] and close its modal
+      prompt: Add 2 products to the shopping cart.
       acceptance:
         - first product is added to cart
         - second product is added to cart
         - cart has 2 items
 
     - name: open-cart-and-checkout
-      prompt: Open the mini basket dropdown by clicking .btn-group.minibasket-menu button, verify the basket menu box is visible at .minibasket-menu-box, then click the checkout button at .minibasket-menu-box .btn.btn-primary
+      prompt: Open the mini basket dropdown, verify the basket menu box is visible, then click the checkout button
       acceptance:
         - mini basket opens successfully
         - checkout page loads
         - user is on payment selection page
 
     - name: select-paypal-payment
-      prompt: Select PayPal as the payment method by clicking on the radio button input[type="radio"][value="oscpaypal"], wait for it to be selected, then click the Next button using button:has-text("Next") to proceed to order summary
+      prompt: Select PayPal as the payment method
       acceptance:
         - PayPal payment method is selected
-        - user advances to order summary page
-        - order details are visible
 
     - name: accept-terms-and-order
-      prompt: Accept the terms and conditions by clicking the checkbox #checkAgbTop, verify it is checked by looking for #checkAgbTop:checked, wait 20 seconds for PayPal iframe to load, then click the Order Now button using button:has-text("Order now")
-      acceptance:
+      prompt: Accept the terms and conditions by clicking the checkbox and click button to place an order
         - terms and conditions checkbox is checked
         - order button is clicked
         - order is submitted

@@ -1,20 +1,60 @@
 import { OpenAI } from 'openai';
 import { ILLMProvider, LLMContext, LLMResponse } from './interfaces';
+import { ModelValidator } from './ModelValidator';
 
 /**
- * OpenAI LLM Provider implementation
- * Supports GPT models including GPT-4, GPT-3.5-turbo, etc.
+ * OpenAI LLM Provider implementation.
+ * Supports GPT models and OpenAI-compatible APIs (e.g., DeepSeek).
+ *
+ * Follows SOLID principles:
+ * - Single Responsibility: Only handles OpenAI API communication
+ * - Dependency Inversion: Implements ILLMProvider interface
+ * - Fail-fast: Validates configuration at construction time
  */
 export class OpenAILLMProvider implements ILLMProvider {
   private readonly client: OpenAI;
+  private readonly defaultModel: string;
+  private readonly defaultMaxTokens: number;
+  private readonly defaultTemperature: number;
 
   /**
-   * Creates a new OpenAI provider instance
-   * @param apiKey - OpenAI API key
-   * @param client - Optional OpenAI client instance (for testing)
+   * Creates a new OpenAI provider instance.
+   *
+   * @param config Configuration object
+   * @param config.apiKey OpenAI API key (required)
+   * @param config.apiUrl API base URL (optional, defaults to OpenAI)
+   * @param config.model Default model name (required, validated)
+   * @param config.maxTokens Default max tokens (optional)
+   * @param config.temperature Default temperature (optional)
+   * @param client Optional OpenAI client instance (for testing)
+   *
+   * @throws Error if model is invalid for 'openai' provider
    */
-  constructor(apiKey: string, client?: OpenAI) {
-    this.client = client || new OpenAI({ apiKey });
+  constructor(
+    config: {
+      apiKey: string;
+      apiUrl?: string;
+      model: string;
+      maxTokens?: number;
+      temperature?: number;
+    },
+    client?: OpenAI
+  ) {
+    // Validate model early (fail-fast principle)
+    ModelValidator.validate('openai', config.model);
+
+    // Store validated configuration
+    this.defaultModel = config.model;
+    this.defaultMaxTokens = config.maxTokens ?? 4000;
+    this.defaultTemperature = config.temperature ?? 0.7;
+
+    // Initialize OpenAI client
+    this.client =
+      client ||
+      new OpenAI({
+        apiKey: config.apiKey,
+        baseURL: config.apiUrl,
+      });
   }
 
   /**
@@ -28,10 +68,10 @@ export class OpenAILLMProvider implements ILLMProvider {
       const messages = this.buildMessages(prompt, context);
 
       const response = await this.client.chat.completions.create({
-        model: context?.model || 'gpt-4',
+        model: context?.model || this.defaultModel,
         messages,
-        temperature: context?.temperature ?? 0.7,
-        max_tokens: context?.maxTokens ?? 2000,
+        temperature: context?.temperature ?? this.defaultTemperature,
+        max_tokens: context?.maxTokens ?? this.defaultMaxTokens,
       });
 
       const choice = response.choices[0];
@@ -67,10 +107,10 @@ export class OpenAILLMProvider implements ILLMProvider {
     const messages = this.buildMessages(prompt, context);
 
     const stream = await this.client.chat.completions.create({
-      model: context?.model || 'gpt-4',
+      model: context?.model || this.defaultModel,
       messages,
-      temperature: context?.temperature ?? 0.7,
-      max_tokens: context?.maxTokens ?? 2000,
+      temperature: context?.temperature ?? this.defaultTemperature,
+      max_tokens: context?.maxTokens ?? this.defaultMaxTokens,
       stream: true,
     });
 

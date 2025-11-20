@@ -16,13 +16,24 @@ import { OxtestCommand } from '../../domain/entities/OxtestCommand';
  */
 export class IterativeDecompositionEngine {
   private readonly promptBuilder: OxtestPromptBuilder;
+  private readonly model: string;
 
+  /**
+   * Creates engine for decomposing instructions into OXTest commands.
+   *
+   * @param llmProvider LLM provider for generating decompositions
+   * @param htmlExtractor HTML extractor for page context
+   * @param oxtestParser Parser for OXTest syntax
+   * @param model Model name (required, validated by provider)
+   */
   constructor(
     private readonly llmProvider: ILLMProvider,
     private readonly htmlExtractor: IHTMLExtractor,
-    private readonly oxtestParser: OxtestParser
+    private readonly oxtestParser: OxtestParser,
+    model: string
   ) {
     this.promptBuilder = new OxtestPromptBuilder();
+    this.model = model;
   }
 
   /**
@@ -42,6 +53,7 @@ export class IterativeDecompositionEngine {
 
       const response = await this.llmProvider.generate(userPrompt, {
         systemPrompt,
+        model: this.model,
       });
 
       const commands = this.oxtestParser.parseContent(response.content);
@@ -91,6 +103,7 @@ export class IterativeDecompositionEngine {
         const response = await this.llmProvider.generate(prompt, {
           systemPrompt,
           conversationHistory: conversationHistory.slice(0, -1), // Exclude current prompt
+          model: this.model,
         });
 
         conversationHistory.push({ role: 'assistant', content: response.content });

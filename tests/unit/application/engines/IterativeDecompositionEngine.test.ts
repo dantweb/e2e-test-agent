@@ -30,7 +30,7 @@ describe('IterativeDecompositionEngine', () => {
       parseFile: jest.fn(),
     } as any;
 
-    engine = new IterativeDecompositionEngine(mockLLM, mockExtractor, mockParser);
+    engine = new IterativeDecompositionEngine(mockLLM, mockExtractor, mockParser, 'gpt-4o');
   });
 
   describe('Single-Step Decomposition', () => {

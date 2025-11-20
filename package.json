@@ -57,6 +57,7 @@
     "@anthropic-ai/sdk": "^0.68.0",
     "@playwright/test": "^1.56.1",
     "commander": "^14.0.2",
+    "minimatch": "^10.1.1",
     "openai": "^6.8.1",
     "playwright": "^1.56.1",
     "winston": "^3.18.3",

@@ -24,12 +24,16 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'yaml';
+import { minimatch } from 'minimatch';
+import { chromium } from 'playwright';
 import { OpenAI } from 'openai';
 import { OpenAILLMProvider } from './infrastructure/llm/OpenAILLMProvider';
 import { OxtestParser } from './infrastructure/parsers/OxtestParser';
 import { PlaywrightExecutor } from './infrastructure/executors/PlaywrightExecutor';
 import { TestOrchestrator } from './application/orchestrators/TestOrchestrator';
 import { ReportAdapter } from './application/orchestrators/ReportAdapter';
+import { IterativeDecompositionEngine } from './application/engines/IterativeDecompositionEngine';
+import { HTMLExtractor } from './application/engines/HTMLExtractor';
 import { Subtask } from './domain/entities/Subtask';
 import { createReporter } from './presentation/reporters';
 import { version } from './index';
@@ -73,6 +77,7 @@ class CLI {
       .option('--format <format>', 'Output format (oxtest|playwright)', 'oxtest')
       .option('--oxtest', 'Also generate .ox.test files alongside Playwright tests', false)
       .option('--execute', 'Execute generated OXTest files after generation', false)
+      .option('--tests <pattern>', 'Glob pattern for which .ox.test files to execute (e.g., "*.ox.test" or "paypal*.ox.test")')
       .option(
         '--reporter <types>',
         'Report formats (comma-separated: json,html,junit,console)',
@@ -91,20 +96,43 @@ class CLI {
     format: string;
     oxtest?: boolean;
     execute?: boolean;
+    tests?: string;
     reporter?: string;
     env?: string;
     verbose?: boolean;
   }): Promise<void> {
     try {
-      // Validate required options
-      if (!options.src) {
-        console.error('❌ Error: --src option is required');
-        console.error('Usage: e2e-test-agent --src=<yaml-file> --output=<directory>');
-        process.exit(1);
+      // Load environment variables first
+      this.loadEnvironment(options.env);
+
+      // If --execute is set without --src, run existing tests
+      if (options.execute && !options.src) {
+        console.log('🚀 Executing existing OXTest files...');
+        await this.executeTests(
+          options.output,
+          options.reporter || 'console',
+          options.verbose,
+          options.tests
+        );
+        return;
       }
 
-      // Load environment variables
-      this.loadEnvironment(options.env);
+      // Validate required options for generation
+      if (!options.src) {
+        console.error('❌ Error: --src option is required for test generation');
+        console.error('');
+        console.error('Usage:');
+        console.error('  Generate tests:');
+        console.error('    e2e-test-agent --src=<yaml-file> --output=<directory> --oxtest');
+        console.error('');
+        console.error('  Execute all .ox.test files:');
+        console.error('    e2e-test-agent --execute --output=<directory>');
+        console.error('');
+        console.error('  Execute specific .ox.test files:');
+        console.error('    e2e-test-agent --execute --output=<directory> --tests="paypal*.ox.test"');
+        console.error('');
+        process.exit(1);
+      }
 
       // Verify API key
       const apiKey = process.env.OPENAI_API_KEY;
@@ -114,13 +142,24 @@ class CLI {
         process.exit(1);
       }
 
+      // Validate model is configured (fail fast)
+      const model = process.env.OPENAI_MODEL;
+      if (!model) {
+        console.error('❌ Error: OPENAI_MODEL environment variable not set');
+        console.error('Please set OPENAI_MODEL in your .env file');
+        console.error('Example: OPENAI_MODEL=gpt-4o or OPENAI_MODEL=deepseek-reasoner');
+        process.exit(1);
+      }
+
+      const apiUrl = process.env.OPENAI_API_URL || 'https://api.openai.com/v1';
+
       if (options.verbose) {
         console.log('🔧 Configuration:');
         console.log(`   Source: ${options.src}`);
         console.log(`   Output: ${options.output}`);
         console.log(`   Format: ${options.format}`);
-        console.log(`   API URL: ${process.env.OPENAI_API_URL || 'https://api.openai.com/v1'}`);
-        console.log(`   Model: ${process.env.OPENAI_MODEL || 'gpt-4o'}`);
+        console.log(`   API URL: ${apiUrl}`);
+        console.log(`   Model: ${model}`);
         console.log('');
       }
 
@@ -129,15 +168,23 @@ class CLI {
       const yamlContent = fs.readFileSync(options.src, 'utf-8');
       const spec: HighLevelYaml = yaml.parse(yamlContent);
 
-      // Initialize LLM provider
+      // Initialize LLM provider with validated configuration
       console.log('🤖 Initializing LLM provider...');
-      const apiUrl = process.env.OPENAI_API_URL || 'https://api.openai.com/v1';
       const openaiClient = new OpenAI({
         apiKey: apiKey,
         baseURL: apiUrl,
         timeout: 60000,
       });
-      const llmProvider = new OpenAILLMProvider(apiKey, openaiClient);
+      const llmProvider = new OpenAILLMProvider(
+        {
+          apiKey: apiKey,
+          apiUrl: apiUrl,
+          model: model,
+          maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '4000'),
+          temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7'),
+        },
+        openaiClient
+      );
 
       // Create output directory
       if (!fs.existsSync(options.output)) {
@@ -194,7 +241,12 @@ class CLI {
       // Execute generated OXTest files if --execute flag is set
       if (options.execute && options.oxtest) {
         console.log('\n🚀 Executing generated tests...');
-        await this.executeTests(options.output, options.reporter || 'console', options.verbose);
+        await this.executeTests(
+          options.output,
+          options.reporter || 'console',
+          options.verbose,
+          options.tests
+        );
       } else if (options.execute && !options.oxtest) {
         console.log('\n⚠️  Warning: --execute requires --oxtest flag. Skipping execution.');
       }
@@ -319,100 +371,133 @@ Generate ONLY the complete test code, no explanations. The code should be produc
     jobs: JobSpec[],
     baseUrl: string
   ): Promise<string> {
-    // Build the test flow description
-    const jobDescriptions = jobs
-      .map((job, index) => {
-        const acceptance = job.acceptance ? job.acceptance.join('\n     - ') : 'None';
-        return `${index + 1}. ${job.name}: ${job.prompt}
-   Acceptance Criteria:
-     - ${acceptance}`;
-      })
-      .join('\n\n');
+    // Launch browser to extract HTML context
+    const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
-    const prompt = `Generate an OXTest format test file for the following test flow.
+    try {
+      // Navigate to the base URL to get initial HTML
+      await page.goto(baseUrl);
+      await page.waitForLoadState('domcontentloaded');
 
-OXTest is a simple domain-specific language for E2E tests with these commands:
+      // Create HTML extractor
+      const htmlExtractor = new HTMLExtractor(page);
+      const parser = new OxtestParser();
 
-Commands:
-- navigate url=<url>
-- click <selector>
-- type <selector> value=<value>
-- select <selector> value=<value>
-- wait timeout=<ms>
-- wait_navigation timeout=<ms>
-- hover <selector>
-- press key=<key>
-- screenshot path=<path>
-- assert_visible <selector>
-- assert_text <selector> text=<text>
-- assert_value <selector> value=<value>
-- assert_url pattern=<regex>
-- assert_exists <selector>
-- assert_not_exists <selector>
+      // Model already validated at initialization - no fallback needed
+      const model = process.env.OPENAI_MODEL!;
 
-Selector formats:
-- css=<css-selector>
-- xpath=<xpath>
-- text="<text>"
-- role=<role>
-- testid=<test-id>
-- Multiple strategies: click css=.button fallback=text="Submit"
+      // Create decomposition engine with HTML context
+      const engine = new IterativeDecompositionEngine(llmProvider, htmlExtractor, parser, model);
 
-Test Name: ${testName}
-Base URL: ${baseUrl}
+      // Generate OXTest commands for each job using HTML context
+      const oxtestLines: string[] = [];
+      oxtestLines.push(`# ${testName} - Generated from YAML`);
+      oxtestLines.push('');
 
-Sequential Test Flow:
-${jobDescriptions}
+      // Add initial navigation
+      oxtestLines.push(`navigate url=${baseUrl}`);
+      oxtestLines.push('');
 
-Requirements:
-1. Use OXTest command syntax (one command per line)
-2. Start with a comment: # ${testName} - Generated from YAML
-3. Use navigate url=${baseUrl} to start
-4. Use CSS selectors primarily, with text fallbacks
-5. Add wait_navigation after actions that trigger page loads
-6. Add assertions based on acceptance criteria
-7. Use environment variables for dynamic values: \${VAR_NAME}
-8. Add comments for each major step (# Step: <step-name>)
-9. Keep commands atomic and clear
-10. Use wait commands when elements need time to appear
+      // Process each job with current page context
+      for (let i = 0; i < jobs.length; i++) {
+        const job = jobs[i];
+        oxtestLines.push(`# Step: ${job.name}`);
 
-Example format:
-# Login to shop - Generated from YAML
-navigate url=https://example.com
-type css=input[name="username"] value=\${TEST_USERNAME}
-type css=input[type="password"] value=\${TEST_PASSWORD}
-click text="Login" fallback=css=button[type="submit"]
-wait_navigation timeout=5000
-assert_url pattern=.*/home
-assert_not_exists css=.error
+        // Build instruction with acceptance criteria
+        let instruction = job.prompt;
+        if (job.acceptance && job.acceptance.length > 0) {
+          instruction += '\nAcceptance criteria: ' + job.acceptance.join(', ');
+        }
 
-Generate ONLY the OXTest commands, no explanations. Use # for comments.`;
+        try {
+          // Decompose this step using current page HTML
+          const subtask = await engine.decompose(instruction);
 
-    const response = await llmProvider.generate(prompt, {
-      model: process.env.OPENAI_MODEL || 'gpt-4o',
-      temperature: 0.2,
-      maxTokens: 2000,
-    });
+          // Convert commands to OXTest format
+          for (const command of subtask.commands) {
+            const line = this.commandToOXTestLine(command);
+            if (line) {
+              oxtestLines.push(line);
+            }
+          }
 
-    // Clean up the response (remove markdown code blocks if present)
-    let code = response.content.trim();
-    if (code.startsWith('```oxtest') || code.startsWith('```')) {
-      code = code.replace(/^```[a-z]*\n/, '').replace(/\n```$/, '');
+          // Note: We don't execute commands here because the decomposition engine
+          // already sees the current page state. Each job decomposition gets fresh HTML.
+
+        } catch (error) {
+          console.warn(`   ⚠️  Warning: Could not decompose step "${job.name}": ${(error as Error).message}`);
+          oxtestLines.push(`# Error: Could not decompose this step`);
+          oxtestLines.push(`# Manual implementation required for: ${job.prompt}`);
+        }
+
+        oxtestLines.push('');
+      }
+
+      return oxtestLines.join('\n');
+
+    } finally {
+      await page.close();
+      await context.close();
+      await browser.close();
+    }
+  }
+
+  /**
+   * Converts an OxtestCommand to an OXTest format line
+   */
+  private commandToOXTestLine(command: any): string {
+    const parts: string[] = [command.type];
+
+    // Add selector if present
+    if (command.selector) {
+      const selectorStr = `${command.selector.strategy}=${command.selector.value}`;
+      parts.push(selectorStr);
+
+      // Add fallback if present
+      if (command.selector.fallbacks && command.selector.fallbacks.length > 0) {
+        const fallback = command.selector.fallbacks[0];
+        parts.push(`fallback=${fallback.strategy}=${fallback.value}`);
+      }
     }
 
-    return code;
+    // Add parameters
+    for (const [key, value] of Object.entries(command.params || {})) {
+      if (value !== undefined && value !== null) {
+        // Quote values with spaces
+        const valueStr = String(value).includes(' ') ? `"${value}"` : String(value);
+        parts.push(`${key}=${valueStr}`);
+      }
+    }
+
+    return parts.join(' ');
   }
 
   private async executeTests(
     outputDir: string,
     reporterTypes: string,
-    verbose?: boolean
+    verbose?: boolean,
+    testsPattern?: string
   ): Promise<void> {
     // Find all .ox.test files
-    const oxtestFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.ox.test'));
+    let oxtestFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.ox.test'));
+
+    // Apply pattern filter if specified
+    if (testsPattern) {
+      oxtestFiles = oxtestFiles.filter(f => minimatch(f, testsPattern));
+
+      if (verbose) {
+        console.log(`🔍 Filtering tests with pattern: ${testsPattern}`);
+      }
+    }
 
     if (oxtestFiles.length === 0) {
-      console.log('⚠️  No .ox.test files found to execute');
+      if (testsPattern) {
+        console.log(`⚠️  No .ox.test files found matching pattern: ${testsPattern}`);
+      } else {
+        console.log('⚠️  No .ox.test files found to execute');
+      }
       return;
     }
 
