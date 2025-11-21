@@ -8,6 +8,11 @@ An intelligent end-to-end testing agent that uses LLMs to decompose high-level t
 
 ## Features
 
+- **3-Phase Proven Generation Flow**: OXTest → Validate → Playwright for maximum accuracy
+- **HTML-Aware Test Generation**: Real browser context with page HTML for accurate selector generation
+- **Automatic Self-Healing**: Failed selectors refined by LLM using current page HTML
+- **Step-by-Step Validation**: Each command validated individually during generation
+- **Living Documents**: `.ox.test` files automatically updated with refined selectors
 - **LLM-Powered Test Generation**: Uses OpenAI or Anthropic LLMs to understand natural language test descriptions
 - **Iterative Decomposition**: Breaks down complex test scenarios into manageable subtasks
 - **Dependency-Aware Task Graphs**: Intelligent task ordering using Directed Acyclic Graphs (DAG) with cycle detection and topological sorting
@@ -42,13 +47,19 @@ npm run e2e-test-agent -- \
 
 **What this does:**
 1. 📝 Reads your YAML specification (natural language test descriptions)
-2. 🤖 Uses LLM (OpenAI/Anthropic) to generate Playwright tests (.spec.ts) and OXTest files (.ox.test)
-3. 🌐 Launches a real browser and executes the generated tests
-4. 📊 Creates beautiful reports in multiple formats:
+2. 🧠 **Phase 1**: Generates OXTest files FIRST (.ox.test) using HTML-aware LLM with real browser context
+3. 🔍 **Phase 2**: Validates OXTest by executing step-by-step with automatic self-healing of failed selectors
+4. 🎭 **Phase 3**: Generates Playwright tests LAST (.spec.ts) from validated OXTest with proven selectors
+5. 📊 Creates beautiful reports in multiple formats:
    - **HTML**: Interactive dashboard with charts and screenshots
    - **JSON**: Machine-readable format for CI/CD integration
    - **JUnit XML**: Standard format for Jenkins, GitLab CI, GitHub Actions
    - **Console**: Color-coded terminal output with progress tracking
+
+**Architecture (v1.2.0)**: The system uses a proven 3-phase generation flow:
+- **OXTest First**: Generated with real HTML context from browser for accuracy
+- **Validation with Self-Healing**: Each command tested individually, failed selectors refined by LLM
+- **Playwright Last**: Generated from validated OXTest, inheriting battle-tested selectors
 
 **Note**: The `--env=.env` flag connects your local `.env` file with LLM API keys. See the [Configuration](#configuration) section below for setup details.
 

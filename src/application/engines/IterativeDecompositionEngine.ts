@@ -42,7 +42,7 @@ export class IterativeDecompositionEngine {
 
   /**
    * Decomposes an instruction into a subtask with commands.
-   * Single-step decomposition without iteration.
+   * Uses two-pass process: planning → command generation.
    *
    * @param instruction Natural language instruction
    * @returns Subtask with generated commands
@@ -51,43 +51,37 @@ export class IterativeDecompositionEngine {
   public async decompose(instruction: string): Promise<Subtask> {
     try {
       if (this.verbose) {
-        console.log(`   🔍 Extracting HTML from current page...`);
-      }
-      const html = await this.htmlExtractor.extractSimplified();
-
-      if (this.verbose) {
-        console.log(`   📊 HTML extracted: ${html.length} characters`);
-        console.log(`   🤖 Generating commands for: "${instruction}"`);
+        console.log(`\n   🎯 Starting two-pass decomposition for: "${instruction}"`);
       }
 
-      const systemPrompt = this.promptBuilder.buildSystemPrompt();
-      const userPrompt = this.promptBuilder.buildDiscoveryPrompt(instruction, html);
+      // Pass 1: Create execution plan
+      const steps = await this.createPlan(instruction);
 
       if (this.verbose) {
-        console.log(`   💬 Sending prompt to LLM (model: ${this.model})...`);
+        console.log(`   ✓ Planning complete: ${steps.length} step(s) identified\n`);
       }
 
-      const response = await this.llmProvider.generate(userPrompt, {
-        systemPrompt,
-        model: this.model,
-      });
+      // Pass 2: Generate commands for each step
+      const commands: OxtestCommand[] = [];
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
 
-      if (this.verbose) {
-        console.log(`   ✅ LLM response received`);
-        console.log(`   📝 Parsing OXTest commands...`);
-      }
-
-      const commands = this.oxtestParser.parseContent(response.content);
-
-      if (this.verbose) {
-        console.log(`   ✓ Parsed ${commands.length} command(s)`);
-        if (commands.length > 0) {
-          commands.forEach((cmd, idx) => {
-            console.log(
-              `      ${idx + 1}. ${cmd.type} ${cmd.selector ? `${cmd.selector.strategy}=${cmd.selector.value}` : ''}`
-            );
-          });
+        if (this.verbose) {
+          console.log(`   📌 Step ${i + 1}/${steps.length}: ${step}`);
         }
+
+        const command = await this.generateCommandForStepWithValidation(step, instruction, 3);
+        commands.push(command);
+
+        if (this.verbose) {
+          console.log(
+            `   ✓ Generated: ${command.type} ${command.selector ? `${command.selector.strategy}=${command.selector.value}` : ''}\n`
+          );
+        }
+      }
+
+      if (this.verbose) {
+        console.log(`   🎉 Decomposition complete: ${commands.length} command(s) generated`);
       }
 
       // Handle empty commands case
@@ -98,7 +92,7 @@ export class IterativeDecompositionEngine {
         ]);
       }
 
-      return new Subtask(`subtask-${Date.now()}`, instruction, Array.from(commands));
+      return new Subtask(`subtask-${Date.now()}`, instruction, commands);
     } catch (error) {
       throw new Error(`Decomposition failed: ${(error as Error).message}`);
     }
@@ -205,5 +199,394 @@ export class IterativeDecompositionEngine {
     }
 
     return false;
+  }
+
+  /**
+   * Creates a plan by breaking down an instruction into atomic steps.
+   * This is the first pass of the iterative decomposition.
+   *
+   * @param instruction Natural language instruction
+   * @returns Array of step descriptions
+   * @internal For testing purposes, will be made private once integrated
+   */
+  public async createPlan(instruction: string): Promise<string[]> {
+    if (this.verbose) {
+      console.log(`   📋 Creating execution plan for: "${instruction}"`);
+    }
+
+    // 1. Extract HTML
+    const html = await this.htmlExtractor.extractSimplified();
+
+    if (this.verbose) {
+      console.log(`   📊 HTML context: ${html.length} characters`);
+    }
+
+    // 2. Build planning prompts
+    const systemPrompt = this.promptBuilder.buildPlanningSystemPrompt();
+    const userPrompt = this.promptBuilder.buildPlanningPrompt(instruction, html);
+
+    if (this.verbose) {
+      console.log(`   🤖 Requesting plan from LLM (model: ${this.model})...`);
+    }
+
+    // 3. Call LLM
+    const response = await this.llmProvider.generate(userPrompt, {
+      systemPrompt,
+      model: this.model,
+    });
+
+    if (this.verbose) {
+      console.log(`   ✅ Plan response received`);
+    }
+
+    // 4. Parse steps
+    const steps = this.parsePlanSteps(response.content);
+
+    if (this.verbose) {
+      console.log(`   ✓ Plan created with ${steps.length} step(s):`);
+      steps.forEach((step, idx) => {
+        console.log(`      ${idx + 1}. ${step}`);
+      });
+    }
+
+    // 5. Fallback if empty
+    if (steps.length === 0) {
+      return [instruction];
+    }
+
+    return steps;
+  }
+
+  /**
+   * Parses plan steps from LLM response.
+   * Handles various formats: numbered lists, bullet points, plain text.
+   *
+   * @param response LLM response text
+   * @returns Array of step descriptions
+   * @internal For testing purposes, will be made private once integrated
+   */
+  public parsePlanSteps(response: string): string[] {
+    const lines = response.split('\n');
+    const steps: string[] = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      // Skip empty lines and short lines
+      if (!trimmed || trimmed.length < 5) continue;
+
+      // Skip headers
+      const lowerLine = trimmed.toLowerCase();
+      if (lowerLine.startsWith('plan')) continue;
+      if (lowerLine.startsWith('step')) continue;
+      if (lowerLine === 'here is' || lowerLine === 'here are') continue;
+
+      // Match numbered lists: "1. Step text" or "1) Step text"
+      const numberedMatch = trimmed.match(/^\d+[.)]\s+(.+)$/);
+      if (numberedMatch) {
+        steps.push(numberedMatch[1].trim());
+        continue;
+      }
+
+      // Match bullet points: "- Step text" or "* Step text"
+      const bulletMatch = trimmed.match(/^[-*]\s+(.+)$/);
+      if (bulletMatch) {
+        steps.push(bulletMatch[1].trim());
+        continue;
+      }
+
+      // If line is substantial (>10 chars) and doesn't end with colon, treat as step
+      if (trimmed.length > 10 && !trimmed.endsWith(':')) {
+        steps.push(trimmed);
+      }
+    }
+
+    return steps;
+  }
+
+  /**
+   * Generates an OXTest command for a single step.
+   * This is the second pass of the iterative decomposition.
+   *
+   * @param step Step description from planning phase
+   * @param instruction Original high-level instruction for context
+   * @returns OXTest command for the step
+   * @internal For testing purposes, will be made private once integrated
+   */
+  public async generateCommandForStep(step: string, instruction: string): Promise<OxtestCommand> {
+    if (this.verbose) {
+      console.log(`   🔧 Generating command for step: "${step}"`);
+    }
+
+    // 1. Extract HTML context
+    const html = await this.htmlExtractor.extractSimplified();
+
+    if (this.verbose) {
+      console.log(`   📊 HTML context: ${html.length} characters`);
+    }
+
+    // 2. Build command generation prompts
+    const systemPrompt = this.promptBuilder.buildSystemPrompt();
+    const userPrompt = this.promptBuilder.buildCommandGenerationPrompt(step, instruction, html);
+
+    if (this.verbose) {
+      console.log(`   🤖 Requesting command from LLM (model: ${this.model})...`);
+    }
+
+    // 3. Call LLM
+    const response = await this.llmProvider.generate(userPrompt, {
+      systemPrompt,
+      model: this.model,
+    });
+
+    if (this.verbose) {
+      console.log(`   ✅ Command response received: ${response.content.substring(0, 50)}...`);
+    }
+
+    // 4. Parse command
+    let commands: readonly OxtestCommand[];
+    try {
+      commands = this.oxtestParser.parseContent(response.content);
+    } catch {
+      if (this.verbose) {
+        console.log(`   ⚠️  Parsing failed, using fallback wait command`);
+      }
+      // Fallback to wait command if parsing fails
+      return new OxtestCommand('wait', { timeout: 0 });
+    }
+
+    // 5. Return first command (should be only one)
+    if (commands.length === 0) {
+      if (this.verbose) {
+        console.log(`   ⚠️  No commands generated, using fallback wait command`);
+      }
+      return new OxtestCommand('wait', { timeout: 0 });
+    }
+
+    const command = commands[0];
+
+    if (this.verbose) {
+      console.log(
+        `   ✓ Generated command: ${command.type} ${command.selector ? `${command.selector.strategy}=${command.selector.value}` : ''}`
+      );
+    }
+
+    return command;
+  }
+
+  /**
+   * Validates a command against HTML to check if selectors exist.
+   * Returns validation result with issues if any.
+   *
+   * @param command Command to validate
+   * @param html Current page HTML
+   * @returns Validation result
+   * @internal For testing purposes, will be made private once integrated
+   */
+  public validateCommand(
+    command: OxtestCommand,
+    html: string
+  ): { valid: boolean; issues: string[] } {
+    const issues: string[] = [];
+
+    // Commands without selectors are always valid
+    if (!command.selector) {
+      return { valid: true, issues: [] };
+    }
+
+    const { strategy, value } = command.selector;
+
+    // Simple validation based on strategy
+    switch (strategy) {
+      case 'css':
+        // Check if CSS selector appears in HTML (simple check)
+        if (!this.selectorExistsInHTML(value, html)) {
+          issues.push(`Selector ${value} not found in HTML`);
+        }
+        break;
+
+      case 'text':
+        // Check if text appears in HTML
+        const textMatches = this.countTextMatches(value, html);
+        if (textMatches === 0) {
+          issues.push(`Text "${value}" not found in HTML`);
+        } else if (textMatches > 1) {
+          issues.push(`Text selector "${value}" matches multiple elements (${textMatches} found)`);
+        }
+        break;
+
+      case 'placeholder':
+        // Check if placeholder attribute exists
+        if (!html.includes(`placeholder="${value}"`)) {
+          issues.push(`Placeholder "${value}" not found in HTML`);
+        }
+        break;
+
+      case 'xpath':
+      case 'role':
+      case 'testid':
+        // For these strategies, we do basic existence checks
+        if (!html.includes(value)) {
+          issues.push(`${strategy} selector "${value}" not found in HTML`);
+        }
+        break;
+    }
+
+    return {
+      valid: issues.length === 0,
+      issues,
+    };
+  }
+
+  /**
+   * Helper to check if a selector-like pattern exists in HTML.
+   */
+  private selectorExistsInHTML(selector: string, html: string): boolean {
+    // Handle class selectors (.classname)
+    if (selector.startsWith('.')) {
+      const className = selector.substring(1);
+      // Check for exact class name match (whole class, not substring)
+      // Match: class="exact-match" or class="foo exact-match bar"
+      // Don't match: class="exact-match-more"
+      const classPattern = new RegExp(
+        `class="([^"]*\\s)?${className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s[^"]*)?"`
+      );
+      const matches = html.match(classPattern);
+      if (!matches) return false;
+      // Verify it's an exact match by checking it's not part of a longer class name
+      const classAttr = matches[0];
+      const classes = classAttr.match(/class="([^"]*)"/)?.[1]?.split(/\s+/) || [];
+      return classes.includes(className);
+    }
+
+    // Handle attribute selectors ([attr="value"])
+    if (selector.startsWith('[') && selector.endsWith(']')) {
+      // Extract attribute and value from [attr="value"] or [attr='value']
+      const attrMatch = selector.match(/\[([^=]+)=["']([^"']+)["']\]/);
+      if (attrMatch) {
+        const [, attrName, attrValue] = attrMatch;
+        // Check if attribute with that value exists in HTML
+        const attrPattern = new RegExp(`${attrName}=["']${attrValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`);
+        return attrPattern.test(html);
+      }
+    }
+
+    // Fallback: simple substring check
+    return html.includes(selector);
+  }
+
+  /**
+   * Helper to count text occurrences in HTML.
+   */
+  private countTextMatches(text: string, html: string): number {
+    const matches = html.match(new RegExp(`>${text}<`, 'g'));
+    return matches ? matches.length : 0;
+  }
+
+  /**
+   * Refines a command based on validation issues.
+   * Calls LLM with command, issues, and HTML to generate improved command.
+   *
+   * @param command Original command that failed validation
+   * @param issues List of validation issues
+   * @param html Current page HTML
+   * @returns Refined command
+   * @internal For testing purposes, will be made private once integrated
+   */
+  public async refineCommand(
+    command: OxtestCommand,
+    issues: string[],
+    html: string
+  ): Promise<OxtestCommand> {
+    if (this.verbose) {
+      console.log(`   🔄 Refining command due to validation issues:`);
+      issues.forEach(issue => console.log(`      - ${issue}`));
+    }
+
+    // Build refinement prompt
+    const systemPrompt = this.promptBuilder.buildSystemPrompt();
+    const userPrompt = this.promptBuilder.buildValidationRefinementPrompt(command, issues, html);
+
+    if (this.verbose) {
+      console.log(`   🤖 Requesting refined command from LLM...`);
+    }
+
+    // Call LLM for refinement
+    const response = await this.llmProvider.generate(userPrompt, {
+      systemPrompt,
+      model: this.model,
+    });
+
+    if (this.verbose) {
+      console.log(`   ✅ Refinement response received`);
+    }
+
+    // Parse refined command
+    try {
+      const commands = this.oxtestParser.parseContent(response.content);
+      if (commands.length > 0) {
+        return commands[0];
+      }
+    } catch {
+      // If parsing fails, return original command
+      if (this.verbose) {
+        console.log(`   ⚠️  Failed to parse refined command, keeping original`);
+      }
+    }
+
+    return command;
+  }
+
+  /**
+   * Generates a command for a step with validation and refinement.
+   * Validates the generated command and refines it if issues are found (up to maxAttempts).
+   *
+   * @param step Step description
+   * @param instruction Original instruction for context
+   * @param maxAttempts Maximum refinement attempts (default: 3)
+   * @returns Validated and potentially refined command
+   * @internal For testing purposes, will be made private once integrated
+   */
+  public async generateCommandForStepWithValidation(
+    step: string,
+    instruction: string,
+    maxAttempts: number = 3
+  ): Promise<OxtestCommand> {
+    // Generate initial command
+    let command = await this.generateCommandForStep(step, instruction);
+    const html = await this.htmlExtractor.extractSimplified();
+
+    // Validation and refinement loop
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (this.verbose) {
+        console.log(`   🔍 Validating command (attempt ${attempt}/${maxAttempts})...`);
+      }
+
+      const validation = this.validateCommand(command, html);
+
+      if (validation.valid) {
+        if (this.verbose) {
+          console.log(`   ✓ Validation passed`);
+        }
+        return command;
+      }
+
+      if (this.verbose) {
+        console.log(`   ⚠️  Validation failed: ${validation.issues.join(', ')}`);
+      }
+
+      // If we've reached max attempts, return current command
+      if (attempt === maxAttempts) {
+        if (this.verbose) {
+          console.log(`   ⚠️  Max refinement attempts reached, using last command`);
+        }
+        return command;
+      }
+
+      // Refine command
+      command = await this.refineCommand(command, validation.issues, html);
+    }
+
+    return command;
   }
 }

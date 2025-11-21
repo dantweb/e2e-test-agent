@@ -28,6 +28,7 @@ import { minimatch } from 'minimatch';
 import { chromium } from 'playwright';
 import { OpenAI } from 'openai';
 import { OpenAILLMProvider } from './infrastructure/llm/OpenAILLMProvider';
+import { ILLMProvider } from './infrastructure/llm/interfaces';
 import { OxtestParser } from './infrastructure/parsers/OxtestParser';
 import { PlaywrightExecutor } from './infrastructure/executors/PlaywrightExecutor';
 import { TestOrchestrator } from './application/orchestrators/TestOrchestrator';
@@ -35,6 +36,7 @@ import { ReportAdapter } from './application/orchestrators/ReportAdapter';
 import { IterativeDecompositionEngine } from './application/engines/IterativeDecompositionEngine';
 import { HTMLExtractor } from './application/engines/HTMLExtractor';
 import { Subtask } from './domain/entities/Subtask';
+import { OxtestCommand } from './domain/entities/OxtestCommand';
 import { createReporter } from './presentation/reporters';
 import { version } from './index';
 
@@ -111,11 +113,46 @@ class CLI {
       // If --execute is set without --src, run existing tests
       if (options.execute && !options.src) {
         console.log('🚀 Executing existing OXTest files...');
+
+        // Initialize LLM provider for selector refinement during execution
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey) {
+          console.error('❌ Error: OPENAI_API_KEY environment variable not set');
+          console.error('Please set OPENAI_API_KEY or provide an .env file with --env');
+          process.exit(1);
+        }
+
+        const model = process.env.OPENAI_MODEL;
+        if (!model) {
+          console.error('❌ Error: OPENAI_MODEL environment variable not set');
+          console.error('Please set OPENAI_MODEL in your .env file');
+          process.exit(1);
+        }
+
+        const apiUrl = process.env.OPENAI_API_URL || 'https://api.openai.com/v1';
+
+        const openaiClient = new OpenAI({
+          apiKey: apiKey,
+          baseURL: apiUrl,
+          timeout: 60000,
+        });
+        const llmProvider = new OpenAILLMProvider(
+          {
+            apiKey: apiKey,
+            apiUrl: apiUrl,
+            model: model,
+            maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '4000'),
+            temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7'),
+          },
+          openaiClient
+        );
+
         await this.executeTests(
           options.output,
           options.reporter || 'console',
           options.verbose,
-          options.tests
+          options.tests,
+          llmProvider
         );
         return;
       }
@@ -202,36 +239,69 @@ class CLI {
         console.log(`   URL: ${testSpec.url}`);
         console.log(`   Jobs: ${testSpec.jobs.length}`);
 
-        // Generate a single test file with all jobs as sequential steps
-        console.log('   🧠 Generating test with all jobs...');
-        const testCode = await this.generateSequentialTestWithLLM(
+        // PHASE 1: Generate OXTest FIRST (HTML-aware, accurate selectors)
+        console.log('   🧠 Generating OXTest format (HTML-aware)...');
+        const oxtestCode = await this.generateOXTestWithLLM(
           llmProvider,
           testName,
           testSpec.jobs,
-          testSpec.url
+          testSpec.url,
+          options.verbose
         );
 
-        // Generate Playwright test file
+        const oxtestFileName = `${testName}.ox.test`;
+        const oxtestFilePath = path.join(options.output, oxtestFileName);
+        fs.writeFileSync(oxtestFilePath, oxtestCode, 'utf-8');
+        console.log(`   📄 Created: ${oxtestFileName}`);
+
+        // PHASE 2: Validate OXTest by execution (with self-healing)
+        let validatedOxtestContent = oxtestCode;
+        if (options.execute !== false) {
+          // Default behavior: validate by execution
+          try {
+            const validation = await this.validateAndHealOXTest(
+              oxtestFilePath,
+              testName,
+              llmProvider,
+              options.verbose || false
+            );
+
+            if (validation.updated) {
+              console.log(`   ✏️  OXTest updated (${validation.healedCount} step(s) healed)`);
+              fs.writeFileSync(oxtestFilePath, validation.content, 'utf-8');
+              validatedOxtestContent = validation.content;
+            } else {
+              console.log(`   ✅ Validation complete (no changes needed)`);
+            }
+          } catch (error) {
+            console.error(`   ❌ Validation failed: ${(error as Error).message}`);
+            console.error(`   ⚠️  OXTest may have issues, but continuing...`);
+          }
+        }
+
+        // PHASE 3: Generate Playwright from validated OXTest
+        // Always generate Playwright unless explicitly disabled
+        console.log('   🎭 Generating Playwright from validated OXTest...');
+
+        // Import converter
+        const { OXTestToPlaywrightConverter } = await import(
+          './application/services/OXTestToPlaywrightConverter'
+        );
+        const converter = new OXTestToPlaywrightConverter();
+
+        const result = await converter.convert(validatedOxtestContent, {
+          testName,
+          baseURL: testSpec.url,
+        });
+
         const testFileName = `${testName}.spec.ts`;
         const testFilePath = path.join(options.output, testFileName);
-        fs.writeFileSync(testFilePath, testCode, 'utf-8');
+        fs.writeFileSync(testFilePath, result.code, 'utf-8');
         console.log(`   📄 Created: ${testFileName}`);
 
-        // Generate OXTest file if --oxtest flag is set
-        if (options.oxtest) {
-          console.log('   🧠 Generating OXTest format...');
-          const oxtestCode = await this.generateOXTestWithLLM(
-            llmProvider,
-            testName,
-            testSpec.jobs,
-            testSpec.url,
-            options.verbose
-          );
-
-          const oxtestFileName = `${testName}.ox.test`;
-          const oxtestFilePath = path.join(options.output, oxtestFileName);
-          fs.writeFileSync(oxtestFilePath, oxtestCode, 'utf-8');
-          console.log(`   📄 Created: ${oxtestFileName}`);
+        if (result.warnings.length > 0 && options.verbose) {
+          console.log(`   ⚠️  Warnings:`);
+          result.warnings.forEach(w => console.log(`      - ${w}`));
         }
       }
 
@@ -243,19 +313,6 @@ class CLI {
       generatedFiles.forEach(file => {
         console.log(`   - ${file}`);
       });
-
-      // Execute generated OXTest files if --execute flag is set
-      if (options.execute && options.oxtest) {
-        console.log('\n🚀 Executing generated tests...');
-        await this.executeTests(
-          options.output,
-          options.reporter || 'console',
-          options.verbose,
-          options.tests
-        );
-      } else if (options.execute && !options.oxtest) {
-        console.log('\n⚠️  Warning: --execute requires --oxtest flag. Skipping execution.');
-      }
     } catch (error) {
       console.error('\n❌ Error:', (error as Error).message);
       if (options.verbose && error instanceof Error) {
@@ -303,7 +360,9 @@ class CLI {
     }
   }
 
-  private async generateSequentialTestWithLLM(
+  // Legacy method - kept for backward compatibility
+  // @ts-ignore - Unused but kept for backward compatibility
+  private async _generateSequentialTestWithLLM(
     llmProvider: OpenAILLMProvider,
     testName: string,
     jobs: JobSpec[],
@@ -507,11 +566,101 @@ Generate ONLY the complete test code, no explanations. The code should be produc
     return parts.join(' ');
   }
 
+  /**
+   * Serializes OxtestCommand array back to OXTest format
+   */
+  private serializeCommandsToOXTest(commands: OxtestCommand[]): string {
+    const lines: string[] = [];
+
+    for (const command of commands) {
+      const line = this.commandToOXTestLine(command);
+      if (line) {
+        lines.push(line);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Validates OXTest by executing it step-by-step with self-healing
+   */
+  private async validateAndHealOXTest(
+    oxtestFilePath: string,
+    _testName: string,
+    llmProvider: ILLMProvider,
+    verbose: boolean
+  ): Promise<{ content: string; updated: boolean; healedCount: number }> {
+    const parser = new OxtestParser();
+    const commands = await parser.parseFile(oxtestFilePath);
+    let updated = false;
+    let healedCount = 0;
+
+    if (commands.length === 0) {
+      return { content: '', updated: false, healedCount: 0 };
+    }
+
+    // Initialize executor with LLM provider for refinement
+    const executor = new PlaywrightExecutor(verbose, llmProvider);
+
+    try {
+      console.log('   🔍 Validating OXTest by execution...');
+      await executor.initialize();
+
+      // Execute commands one by one
+      const refinedCommands: OxtestCommand[] = [];
+
+      for (let i = 0; i < commands.length; i++) {
+        const command = commands[i];
+
+        if (verbose) {
+          console.log(`      Step ${i + 1}/${commands.length}: ${command.type}`);
+        }
+
+        const result = await executor.execute(command);
+
+        if (result.success) {
+          // Use refined command if available, otherwise original
+          if (result.refined && result.refinedCommand) {
+            refinedCommands.push(result.refinedCommand);
+            updated = true;
+            healedCount++;
+
+            if (verbose) {
+              console.log(`      ✏️  Command healed with refined selector`);
+            }
+          } else {
+            refinedCommands.push(command);
+          }
+        } else {
+          // Command failed even after refinement attempts
+          console.log(`      ❌ Step ${i + 1} failed: ${result.error}`);
+          throw new Error(`Validation failed at step ${i + 1}: ${result.error}`);
+        }
+      }
+
+      // Serialize refined commands back to OXTest format
+      if (updated) {
+        const newContent = this.serializeCommandsToOXTest(refinedCommands);
+        return { content: newContent, updated: true, healedCount };
+      }
+
+      return {
+        content: fs.readFileSync(oxtestFilePath, 'utf-8'),
+        updated: false,
+        healedCount: 0,
+      };
+    } finally {
+      await executor.close();
+    }
+  }
+
   private async executeTests(
     outputDir: string,
     reporterTypes: string,
     verbose?: boolean,
-    testsPattern?: string
+    testsPattern?: string,
+    llmProvider?: ILLMProvider
   ): Promise<void> {
     // Find all .ox.test files
     let oxtestFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.ox.test'));
@@ -536,8 +685,8 @@ Generate ONLY the complete test code, no explanations. The code should be produc
 
     console.log(`📋 Found ${oxtestFiles.length} test file(s) to execute`);
 
-    // Initialize executor
-    const executor = new PlaywrightExecutor(verbose);
+    // Initialize executor with LLM provider for selector refinement
+    const executor = new PlaywrightExecutor(verbose, llmProvider);
     const parser = new OxtestParser();
 
     try {

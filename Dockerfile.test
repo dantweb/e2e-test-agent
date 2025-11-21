@@ -40,8 +40,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
-COPY jest.config.js ./
-COPY eslint.config.js ./
+
+# Copy config files if they exist (using wildcard to avoid errors)
+COPY jest.config.j[s] ./
+COPY eslint.config.j[s] ./
 
 # Install all dependencies (including dev dependencies for testing)
 RUN npm ci
@@ -49,12 +51,18 @@ RUN npm ci
 # Install Playwright browsers
 RUN npx playwright install chromium
 
-# Copy source code and tests
+# Copy source code
 COPY src ./src
-COPY tests ./tests
+
+# Copy tests directory if it exists (using a script to handle .dockerignore)
+# We'll mount tests as a volume instead in docker-compose
+# This allows tests to be excluded in .dockerignore for production builds
 
 # Build the application
 RUN npm run build
 
-# Default command runs tests
+# Create directories for mounted volumes
+RUN mkdir -p /app/tests /app/reports /app/_generated
+
+# Default command runs tests (tests will be mounted)
 CMD ["npm", "test"]

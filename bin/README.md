@@ -49,10 +49,20 @@ Main script for generating and executing tests.
 This will:
 - Use `.env` from current directory
 - Read the YAML file
-- Generate `.ox.test` files (OXTest format)
-- Generate `.spec.ts` files (Playwright format)
-- Execute the .ox.test files
+- **Phase 1**: Generate `.ox.test` files FIRST (OXTest format with HTML-aware LLM)
+- **Phase 2**: Validate OXTest by execution (step-by-step with self-healing)
+- **Phase 3**: Generate `.spec.ts` files LAST (Playwright format from validated OXTest)
 - Generate **all report formats**: HTML, JSON, JUnit, and Console
+
+**New Architecture (v1.2.0)**:
+The system now uses a proven generation flow:
+1. OXTest generated first with real HTML context from browser
+2. Each command validated individually during generation
+3. Failed selectors refined automatically with LLM
+4. `.ox.test` file updated with proven selectors
+5. Playwright generated last using battle-tested selectors from validated OXTest
+
+This ensures Playwright tests have the highest accuracy on first run.
 
 #### 2. Generate tests only
 

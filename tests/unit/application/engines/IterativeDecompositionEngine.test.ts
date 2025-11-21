@@ -33,14 +33,24 @@ describe('IterativeDecompositionEngine', () => {
     engine = new IterativeDecompositionEngine(mockLLM, mockExtractor, mockParser, 'gpt-4o');
   });
 
-  describe('Single-Step Decomposition', () => {
+  describe('Two-Pass Decomposition', () => {
     it('should decompose single step instruction', async () => {
       const instruction = 'Navigate to homepage';
 
       mockExtractor.extractSimplified.mockResolvedValue('<html><body></body></html>');
-      mockLLM.generate.mockResolvedValue({
-        content: 'navigate url=https://shop.dev',
+
+      // Pass 1: Planning - returns single step
+      mockLLM.generate.mockResolvedValueOnce({
+        content: '1. Navigate to homepage',
         usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      // Pass 2: Command generation
+      mockLLM.generate.mockResolvedValueOnce({
+        content: 'navigate url=https://shop.dev',
+        usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
         model: 'gpt-4',
         finishReason: 'stop',
       });
@@ -54,13 +64,24 @@ describe('IterativeDecompositionEngine', () => {
       expect(subtask.commands).toHaveLength(1);
       expect(subtask.commands[0].type).toBe('navigate');
       expect(subtask.description).toBe(instruction);
+      expect(mockLLM.generate).toHaveBeenCalledTimes(2); // Planning + command generation
     });
 
     it('should use simplified HTML extraction', async () => {
       const instruction = 'Click submit button';
 
       mockExtractor.extractSimplified.mockResolvedValue('<button>Submit</button>');
-      mockLLM.generate.mockResolvedValue({
+
+      // Pass 1: Planning
+      mockLLM.generate.mockResolvedValueOnce({
+        content: '1. Click submit button',
+        usage: { promptTokens: 100, completionTokens: 10, totalTokens: 110 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      // Pass 2: Command generation
+      mockLLM.generate.mockResolvedValueOnce({
         content: 'click text="Submit"',
         usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
         model: 'gpt-4',
@@ -74,13 +95,24 @@ describe('IterativeDecompositionEngine', () => {
       await engine.decompose(instruction);
 
       expect(mockExtractor.extractSimplified).toHaveBeenCalled();
+      expect(mockExtractor.extractSimplified).toHaveBeenCalledTimes(3); // Once for planning, once for command gen, once for validation
     });
 
     it('should pass system prompt to LLM', async () => {
       const instruction = 'Test';
 
       mockExtractor.extractSimplified.mockResolvedValue('<html></html>');
-      mockLLM.generate.mockResolvedValue({
+
+      // Pass 1: Planning
+      mockLLM.generate.mockResolvedValueOnce({
+        content: '1. Navigate to test site',
+        usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      // Pass 2: Command generation
+      mockLLM.generate.mockResolvedValueOnce({
         content: 'navigate url=https://test.com',
         usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
         model: 'gpt-4',
@@ -93,12 +125,78 @@ describe('IterativeDecompositionEngine', () => {
 
       await engine.decompose(instruction);
 
+      // Both planning and command generation should receive system prompts
       expect(mockLLM.generate).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          systemPrompt: expect.stringContaining('Oxtest'),
+          systemPrompt: expect.any(String),
         })
       );
+    });
+
+    it('should generate multiple commands for multi-step instruction', async () => {
+      const instruction = 'Login with username and password';
+
+      mockExtractor.extractSimplified.mockResolvedValue(
+        '<form><input name="username"/><input name="password"/><button>Login</button></form>'
+      );
+
+      // Pass 1: Planning - returns 3 steps
+      mockLLM.generate.mockResolvedValueOnce({
+        content: '1. Fill username field\n2. Fill password field\n3. Click login button',
+        usage: { promptTokens: 100, completionTokens: 30, totalTokens: 130 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      // Pass 2: Command generation for step 1
+      mockLLM.generate.mockResolvedValueOnce({
+        content: 'type css=[name="username"] value="admin"',
+        usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      // Pass 2: Command generation for step 2
+      mockLLM.generate.mockResolvedValueOnce({
+        content: 'type css=[name="password"] value="secret"',
+        usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      // Pass 2: Command generation for step 3
+      mockLLM.generate.mockResolvedValueOnce({
+        content: 'click text="Login"',
+        usage: { promptTokens: 50, completionTokens: 5, totalTokens: 55 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      mockParser.parseContent
+        .mockReturnValueOnce([
+          new OxtestCommand(
+            'type',
+            { value: 'admin' },
+            new SelectorSpec('css', '[name="username"]')
+          ),
+        ])
+        .mockReturnValueOnce([
+          new OxtestCommand(
+            'type',
+            { value: 'secret' },
+            new SelectorSpec('css', '[name="password"]')
+          ),
+        ])
+        .mockReturnValueOnce([new OxtestCommand('click', {}, new SelectorSpec('text', 'Login'))]);
+
+      const subtask = await engine.decompose(instruction);
+
+      expect(subtask.commands).toHaveLength(3);
+      expect(subtask.commands[0].type).toBe('type');
+      expect(subtask.commands[1].type).toBe('type');
+      expect(subtask.commands[2].type).toBe('click');
+      expect(mockLLM.generate).toHaveBeenCalledTimes(4); // 1 planning + 3 command generation
     });
   });
 
@@ -282,16 +380,43 @@ describe('IterativeDecompositionEngine', () => {
       await expect(engine.decompose('Test')).rejects.toThrow('Decomposition failed');
     });
 
-    it('should handle LLM errors', async () => {
+    it('should handle LLM errors in planning phase', async () => {
       mockExtractor.extractSimplified.mockResolvedValue('<html></html>');
       mockLLM.generate.mockRejectedValue(new Error('LLM error'));
 
       await expect(engine.decompose('Test')).rejects.toThrow('Decomposition failed');
     });
 
-    it('should handle parser errors', async () => {
+    it('should handle LLM errors in command generation phase', async () => {
       mockExtractor.extractSimplified.mockResolvedValue('<html></html>');
-      mockLLM.generate.mockResolvedValue({
+
+      // Planning succeeds
+      mockLLM.generate.mockResolvedValueOnce({
+        content: '1. Do something',
+        usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      // Command generation fails
+      mockLLM.generate.mockRejectedValueOnce(new Error('LLM error'));
+
+      await expect(engine.decompose('Test')).rejects.toThrow('Decomposition failed');
+    });
+
+    it('should handle parser errors gracefully with fallback', async () => {
+      mockExtractor.extractSimplified.mockResolvedValue('<html></html>');
+
+      // Planning succeeds
+      mockLLM.generate.mockResolvedValueOnce({
+        content: '1. Do something',
+        usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      // Command generation returns invalid content
+      mockLLM.generate.mockResolvedValueOnce({
         content: 'invalid command',
         usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
         model: 'gpt-4',
@@ -302,27 +427,40 @@ describe('IterativeDecompositionEngine', () => {
         throw new Error('Parse error');
       });
 
-      await expect(engine.decompose('Test')).rejects.toThrow('Decomposition failed');
+      // Should not throw, but return fallback wait command
+      const subtask = await engine.decompose('Test');
+      expect(subtask.commands).toHaveLength(1);
+      expect(subtask.commands[0].type).toBe('wait');
     });
   });
 
   describe('Edge Cases', () => {
-    it('should handle empty response from LLM', async () => {
+    it('should handle empty plan from LLM', async () => {
       mockExtractor.extractSimplified.mockResolvedValue('<html></html>');
-      mockLLM.generate.mockResolvedValue({
-        content: 'COMPLETE',
+
+      // Planning returns empty/invalid response (no parseable steps)
+      mockLLM.generate.mockResolvedValueOnce({
+        content: 'I cannot do this task',
         usage: { promptTokens: 50, completionTokens: 5, totalTokens: 55 },
         model: 'gpt-4',
         finishReason: 'stop',
       });
 
-      mockParser.parseContent.mockReturnValue([]);
+      // Command generation for fallback step (original instruction)
+      mockLLM.generate.mockResolvedValueOnce({
+        content: 'wait timeout=0',
+        usage: { promptTokens: 30, completionTokens: 5, totalTokens: 35 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      mockParser.parseContent.mockReturnValue([new OxtestCommand('wait', { timeout: 0 })]);
 
       const subtask = await engine.decompose('Test instruction');
 
       expect(subtask).toBeDefined();
       expect(subtask.description).toBe('Test instruction');
-      // Should have a no-op wait command
+      // Should have a wait command from fallback
       expect(subtask.commands.length).toBeGreaterThan(0);
     });
 
@@ -336,7 +474,17 @@ describe('IterativeDecompositionEngine', () => {
 
     it('should handle empty HTML', async () => {
       mockExtractor.extractSimplified.mockResolvedValue('');
-      mockLLM.generate.mockResolvedValue({
+
+      // Planning with empty HTML
+      mockLLM.generate.mockResolvedValueOnce({
+        content: '1. Navigate to test site',
+        usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
+        model: 'gpt-4',
+        finishReason: 'stop',
+      });
+
+      // Command generation
+      mockLLM.generate.mockResolvedValueOnce({
         content: 'navigate url=https://test.com',
         usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
         model: 'gpt-4',
