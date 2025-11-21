@@ -4,6 +4,7 @@ import { OxtestParser } from '../../infrastructure/parsers/OxtestParser';
 import { OxtestPromptBuilder } from '../../infrastructure/llm/OxtestPromptBuilder';
 import { Subtask } from '../../domain/entities/Subtask';
 import { OxtestCommand } from '../../domain/entities/OxtestCommand';
+import { LanguageDetectionService } from '../services/LanguageDetectionService';
 
 /**
  * Iteratively decomposes high-level instructions into Oxtest commands.
@@ -18,6 +19,7 @@ export class IterativeDecompositionEngine {
   private readonly promptBuilder: OxtestPromptBuilder;
   private readonly model: string;
   private readonly verbose: boolean;
+  private readonly languageDetector: LanguageDetectionService;
 
   /**
    * Creates engine for decomposing instructions into OXTest commands.
@@ -38,6 +40,7 @@ export class IterativeDecompositionEngine {
     this.promptBuilder = new OxtestPromptBuilder();
     this.model = model;
     this.verbose = verbose;
+    this.languageDetector = new LanguageDetectionService();
   }
 
   /**
@@ -221,9 +224,17 @@ export class IterativeDecompositionEngine {
       console.log(`   📊 HTML context: ${html.length} characters`);
     }
 
-    // 2. Build planning prompts
+    // 2. Detect language
+    const language = this.languageDetector.detectLanguage(html);
+    const languageContext = this.languageDetector.getLanguageContext(language);
+
+    if (this.verbose && language.code !== 'en') {
+      console.log(`   🌍 Language detected: ${language.name} (${language.code})`);
+    }
+
+    // 3. Build planning prompts
     const systemPrompt = this.promptBuilder.buildPlanningSystemPrompt();
-    const userPrompt = this.promptBuilder.buildPlanningPrompt(instruction, html);
+    const userPrompt = this.promptBuilder.buildPlanningPrompt(instruction, html, languageContext);
 
     if (this.verbose) {
       console.log(`   🤖 Requesting plan from LLM (model: ${this.model})...`);
@@ -325,15 +336,28 @@ export class IterativeDecompositionEngine {
       console.log(`   📊 HTML context: ${html.length} characters`);
     }
 
-    // 2. Build command generation prompts
+    // 2. Detect language
+    const language = this.languageDetector.detectLanguage(html);
+    const languageContext = this.languageDetector.getLanguageContext(language);
+
+    if (this.verbose && language.code !== 'en') {
+      console.log(`   🌍 Language detected: ${language.name} (${language.code})`);
+    }
+
+    // 3. Build command generation prompts
     const systemPrompt = this.promptBuilder.buildSystemPrompt();
-    const userPrompt = this.promptBuilder.buildCommandGenerationPrompt(step, instruction, html);
+    const userPrompt = this.promptBuilder.buildCommandGenerationPrompt(
+      step,
+      instruction,
+      html,
+      languageContext
+    );
 
     if (this.verbose) {
       console.log(`   🤖 Requesting command from LLM (model: ${this.model})...`);
     }
 
-    // 3. Call LLM
+    // 4. Call LLM
     const response = await this.llmProvider.generate(userPrompt, {
       systemPrompt,
       model: this.model,
@@ -343,7 +367,7 @@ export class IterativeDecompositionEngine {
       console.log(`   ✅ Command response received: ${response.content.substring(0, 50)}...`);
     }
 
-    // 4. Parse command
+    // 5. Parse command
     let commands: readonly OxtestCommand[];
     try {
       commands = this.oxtestParser.parseContent(response.content);
@@ -355,7 +379,7 @@ export class IterativeDecompositionEngine {
       return new OxtestCommand('wait', { timeout: 0 });
     }
 
-    // 5. Return first command (should be only one)
+    // 6. Return first command (should be only one)
     if (commands.length === 0) {
       if (this.verbose) {
         console.log(`   ⚠️  No commands generated, using fallback wait command`);
@@ -466,7 +490,9 @@ export class IterativeDecompositionEngine {
       if (attrMatch) {
         const [, attrName, attrValue] = attrMatch;
         // Check if attribute with that value exists in HTML
-        const attrPattern = new RegExp(`${attrName}=["']${attrValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`);
+        const attrPattern = new RegExp(
+          `${attrName}=["']${attrValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`
+        );
         return attrPattern.test(html);
       }
     }
@@ -503,9 +529,22 @@ export class IterativeDecompositionEngine {
       issues.forEach(issue => console.log(`      - ${issue}`));
     }
 
+    // Detect language
+    const language = this.languageDetector.detectLanguage(html);
+    const languageContext = this.languageDetector.getLanguageContext(language);
+
+    if (this.verbose && language.code !== 'en') {
+      console.log(`   🌍 Language context for refinement: ${language.name}`);
+    }
+
     // Build refinement prompt
     const systemPrompt = this.promptBuilder.buildSystemPrompt();
-    const userPrompt = this.promptBuilder.buildValidationRefinementPrompt(command, issues, html);
+    const userPrompt = this.promptBuilder.buildValidationRefinementPrompt(
+      command,
+      issues,
+      html,
+      languageContext
+    );
 
     if (this.verbose) {
       console.log(`   🤖 Requesting refined command from LLM...`);

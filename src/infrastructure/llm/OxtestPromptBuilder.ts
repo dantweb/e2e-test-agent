@@ -164,9 +164,12 @@ Do not add explanations or commentary - only the numbered list.`;
    *
    * @param instruction User instruction
    * @param html Current page HTML
+   * @param languageContext Optional language context for non-English sites
    */
-  public buildPlanningPrompt(instruction: string, html: string): string {
-    return `Break down this test instruction into atomic steps:
+  public buildPlanningPrompt(instruction: string, html: string, languageContext?: string): string {
+    const languagePrefix = languageContext ? `${languageContext}\n\n` : '';
+
+    return `${languagePrefix}Break down this test instruction into atomic steps:
 
 INSTRUCTION: ${instruction}
 
@@ -185,9 +188,17 @@ Return ONLY a numbered list of steps (1., 2., 3., etc.), nothing else.`;
    * @param step Current step to generate command for
    * @param instruction Original high-level instruction
    * @param html Current page HTML
+   * @param languageContext Optional language context for non-English sites
    */
-  public buildCommandGenerationPrompt(step: string, instruction: string, html: string): string {
-    return `Generate ONE Oxtest command for this specific step:
+  public buildCommandGenerationPrompt(
+    step: string,
+    instruction: string,
+    html: string,
+    languageContext?: string
+  ): string {
+    const languagePrefix = languageContext ? `${languageContext}\n\n` : '';
+
+    return `${languagePrefix}Generate ONE Oxtest command for this specific step:
 
 STEP: ${step}
 
@@ -210,8 +221,14 @@ Return ONLY the Oxtest command, nothing else. No explanations, no markdown, no c
    * @param command Original command that failed validation
    * @param issues List of validation issues
    * @param html Current page HTML
+   * @param languageContext Optional language context for non-English sites
    */
-  public buildValidationRefinementPrompt(command: any, issues: string[], html: string): string {
+  public buildValidationRefinementPrompt(
+    command: any,
+    issues: string[],
+    html: string,
+    languageContext?: string
+  ): string {
     // Format the original command
     let commandStr = command.type;
     if (command.selector) {
@@ -223,7 +240,9 @@ Return ONLY the Oxtest command, nothing else. No explanations, no markdown, no c
       });
     }
 
-    return `REFINE the following OXTest command that failed validation:
+    const languagePrefix = languageContext ? `${languageContext}\n\n` : '';
+
+    return `${languagePrefix}REFINE the following OXTest command that failed validation:
 
 ORIGINAL COMMAND: ${commandStr}
 
