@@ -8,6 +8,9 @@
  * 3. Playwright is generated FROM validated OXTest
  */
 
+// @ts-nocheck - Stub test file with unused variables
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import * as fs from 'fs';
 import * as path from 'path';
 

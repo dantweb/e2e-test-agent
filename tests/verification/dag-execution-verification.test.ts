@@ -8,6 +8,8 @@
  * 4. Cycles are detected and prevented
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { DirectedAcyclicGraph } from '../../src/domain/graph/DirectedAcyclicGraph';
 import type { GraphNode } from '../../src/domain/graph/types';

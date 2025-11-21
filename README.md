@@ -10,6 +10,7 @@ An intelligent end-to-end testing agent that uses LLMs to decompose high-level t
 
 - **3-Phase Proven Generation Flow**: OXTest → Validate → Playwright for maximum accuracy
 - **HTML-Aware Test Generation**: Real browser context with page HTML for accurate selector generation
+- **🌍 Multi-Language Support**: Automatic language detection and translation context for German, French, Spanish, Italian, Dutch, Polish, Portuguese, Russian, Chinese, and Japanese websites
 - **Automatic Self-Healing**: Failed selectors refined by LLM using current page HTML
 - **Step-by-Step Validation**: Each command validated individually during generation
 - **Living Documents**: `.ox.test` files automatically updated with refined selectors
@@ -376,13 +377,13 @@ npm test
 
 ### Current Status
 
-- ✅ 695/695 tests passing (100%)
-- ✅ 0 ESLint errors (6 non-blocking warnings)
+- ✅ 799/799 tests passing (100%)
+- ✅ 0 ESLint errors (19 non-blocking warnings)
 - ✅ Full CI/CD pipeline configured
 - ✅ Node 22 compatibility
 - ✅ Codecov integration (optional)
-- ✅ 14/19 core sprints complete (74%)
-- ✅ Advanced features: Task Graphs, State Machines, Multi-Format Reporting
+- ✅ Phase 5.1 complete: Multi-language support with automatic language detection
+- ✅ Advanced features: Task Graphs, State Machines, Multi-Format Reporting, Language Detection
 
 ## Documentation
 

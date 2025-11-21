@@ -7,6 +7,7 @@ This document provides practical examples for using E2E Test Agent in real-world
 - [Quick Start Examples](#quick-start-examples)
 - [GitHub Actions Integration](#github-actions-integration)
 - [Test Examples](#test-examples)
+- [Multi-Language Testing](#multi-language-testing)
 - [Docker Usage Patterns](#docker-usage-patterns)
 - [Advanced Scenarios](#advanced-scenarios)
 
@@ -536,6 +537,186 @@ complete-checkout:
       on_error:
         catch: log error and continue
 ```
+
+## Multi-Language Testing
+
+The E2E Test Agent automatically detects website language and provides appropriate translation context to the LLM. This feature significantly improves test accuracy for non-English websites.
+
+### Supported Languages
+
+- 🇬🇧 English (default)
+- 🇩🇪 German (de)
+- 🇫🇷 French (fr)
+- 🇪🇸 Spanish (es)
+- 🇮🇹 Italian (it)
+- 🇳🇱 Dutch (nl)
+- 🇵🇱 Polish (pl)
+- 🇵🇹 Portuguese (pt)
+- 🇷🇺 Russian (ru)
+- 🇨🇳 Chinese (zh)
+- 🇯🇵 Japanese (ja)
+
+### How It Works
+
+The agent:
+1. Extracts the `<html lang="de">` attribute from the page
+2. Provides the LLM with common UI element translations
+3. Ensures generated selectors use the correct language (e.g., `text="Anmelden"` instead of `text="Login"` for German sites)
+
+### Example: Testing a German E-Commerce Site
+
+**File**: `tests/german-shopping.yaml`
+
+```yaml
+german-shop-test:
+  environment: production
+  url: https://www.paypal.com/de
+  timeout: 30
+  jobs:
+    - name: homepage
+      prompt: Go to the homepage and verify it loads
+      acceptance:
+        - page loads successfully
+        - German language elements are visible
+
+    - name: navigate-business
+      prompt: Click on the business/commercial section link
+      acceptance:
+        - business section loads
+        - business-related content is visible
+
+    - name: find-checkout-button
+      prompt: Find and verify the checkout button is present
+      acceptance:
+        - checkout button is visible and clickable
+```
+
+**Run it:**
+
+```bash
+docker run --rm \
+  -v $(pwd):/workspace \
+  -e OPENAI_API_KEY=sk-your-key \
+  dantweb/e2e-test-agent:latest \
+  --src=tests/german-shopping.yaml \
+  --output=_generated
+```
+
+**What Happens:**
+- Agent detects `<html lang="de">`
+- LLM receives context: "The website is in German. Use German text for selectors"
+- Generated selectors use German text:
+  ```
+  click text="Anmelden"           # Not "Login"
+  click text="Zur Kasse"          # Not "Checkout"
+  click text="In den Warenkorb"   # Not "Add to Cart"
+  ```
+
+### Example: Multi-Language Matrix Testing
+
+Test the same flow across multiple language versions of your site:
+
+**File**: `.github/workflows/multi-language-e2e.yml`
+
+```yaml
+name: Multi-Language E2E Tests
+
+on: [push, workflow_dispatch]
+
+jobs:
+  test-languages:
+    strategy:
+      matrix:
+        site:
+          - name: German
+            url: https://www.example.com/de
+            lang: de
+          - name: French
+            url: https://www.example.com/fr
+            lang: fr
+          - name: Spanish
+            url: https://www.example.com/es
+            lang: es
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+    name: Test ${{ matrix.site.name }} Site
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test spec
+        run: |
+          cat > test-${{ matrix.site.lang }}.yaml <<EOF
+          shopping-test-${{ matrix.site.lang }}:
+            environment: production
+            url: ${{ matrix.site.url }}
+            timeout: 30
+            jobs:
+              - name: homepage
+                prompt: Navigate to homepage and verify it loads
+                acceptance:
+                  - page loads successfully
+                  - no errors are displayed
+
+              - name: add-to-cart
+                prompt: Find a product and add it to cart
+                acceptance:
+                  - product is added
+                  - cart badge updates
+
+              - name: view-cart
+                prompt: Go to shopping cart
+                acceptance:
+                  - cart page loads
+                  - product is in cart
+          EOF
+
+      - name: Run test for ${{ matrix.site.name }}
+        run: |
+          docker run --rm \
+            -v $(pwd):/workspace \
+            -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            dantweb/e2e-test-agent:latest \
+            --src=test-${{ matrix.site.lang }}.yaml \
+            --output=_generated/${{ matrix.site.lang }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.site.lang }}
+          path: _generated/${{ matrix.site.lang }}/
+```
+
+### Translation Coverage
+
+Each supported language includes translations for common UI elements:
+
+**German (de):**
+- Login → Anmelden
+- Logout → Abmelden
+- Add to Cart → In den Warenkorb
+- Checkout → Zur Kasse
+- Search → Suchen
+- Sign Up → Registrieren
+- My Account → Mein Konto
+- ...and 20+ more
+
+**French (fr):**
+- Login → Connexion
+- Add to Cart → Ajouter au panier
+- Checkout → Passer la commande
+- ...and more
+
+**Spanish (es), Italian (it), Dutch (nl), Polish (pl), Portuguese (pt), Russian (ru):**
+Similar comprehensive translation mappings
+
+### Best Practices for Multi-Language Testing
+
+1. **Let the agent detect language automatically** - No configuration needed
+2. **Use natural language in prompts** - Write in English, the agent will generate correct language-specific selectors
+3. **Verify language-specific content** - Add acceptance criteria that check for translated text
+4. **Test fallback behavior** - Verify what happens when language detection fails
 
 ## Docker Usage Patterns
 

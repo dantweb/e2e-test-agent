@@ -54,9 +54,8 @@ RUN npx playwright install chromium
 # Copy source code
 COPY src ./src
 
-# Copy tests directory if it exists (using a script to handle .dockerignore)
-# We'll mount tests as a volume instead in docker-compose
-# This allows tests to be excluded in .dockerignore for production builds
+# Copy tests directory
+COPY tests ./tests
 
 # Build the application
 RUN npm run build

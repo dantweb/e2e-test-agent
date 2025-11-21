@@ -8,6 +8,8 @@
  * 4. The ox.test file is updated with healed content
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RefinementEngine } from '../../src/application/engines/RefinementEngine';
 import { FailureAnalyzer } from '../../src/application/analyzers/FailureAnalyzer';

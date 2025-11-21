@@ -7,6 +7,8 @@
  * 3. The full flow from YAML → LLM → OXTest works correctly
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { IterativeDecompositionEngine } from '../../src/application/engines/IterativeDecompositionEngine';
 import { OxtestPromptBuilder } from '../../src/infrastructure/llm/OxtestPromptBuilder';
