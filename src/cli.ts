@@ -34,7 +34,10 @@ import { PlaywrightExecutor } from './infrastructure/executors/PlaywrightExecuto
 import { TestOrchestrator } from './application/orchestrators/TestOrchestrator';
 import { ReportAdapter } from './application/orchestrators/ReportAdapter';
 import { IterativeDecompositionEngine } from './application/engines/IterativeDecompositionEngine';
+import { SimpleEOPEngine } from './application/engines/SimpleEOPEngine';
 import { HTMLExtractor } from './application/engines/HTMLExtractor';
+import { LanguageDetectionService } from './application/services/LanguageDetectionService';
+import { OxtestPromptBuilder } from './infrastructure/llm/OxtestPromptBuilder';
 import { Subtask } from './domain/entities/Subtask';
 import { OxtestCommand } from './domain/entities/OxtestCommand';
 import { createReporter } from './presentation/reporters';
@@ -463,14 +466,39 @@ Generate ONLY the complete test code, no explanations. The code should be produc
       // Model already validated at initialization - no fallback needed
       const model = process.env.OPENAI_MODEL!;
 
-      // Create decomposition engine with HTML context
-      const engine = new IterativeDecompositionEngine(
-        llmProvider,
-        htmlExtractor,
-        parser,
-        model,
-        verbose
-      );
+      // Check if EOP mode is enabled (opt-in via environment variable)
+      const useEOP = process.env.E2E_USE_EOP === 'true' || process.env.E2E_USE_EOP === '1';
+
+      if (useEOP && verbose) {
+        console.log('   🔄 Using Execute-Observe-Plan (EOP) mode for dynamic content');
+      }
+
+      // Create appropriate decomposition engine
+      let engine: IterativeDecompositionEngine | SimpleEOPEngine;
+
+      if (useEOP) {
+        // EOP mode: Execute commands during generation to keep HTML fresh
+        const languageDetector = new LanguageDetectionService();
+        const promptBuilder = new OxtestPromptBuilder();
+        engine = new SimpleEOPEngine(
+          htmlExtractor,
+          llmProvider,
+          promptBuilder,
+          parser,
+          languageDetector,
+          page,
+          { verbose, model }
+        );
+      } else {
+        // Standard mode: Three-pass decomposition
+        engine = new IterativeDecompositionEngine(
+          llmProvider,
+          htmlExtractor,
+          parser,
+          model,
+          verbose
+        );
+      }
 
       // Generate OXTest commands for each job using HTML context
       const oxtestLines: string[] = [];

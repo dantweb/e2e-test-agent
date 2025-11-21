@@ -1,0 +1,271 @@
+@startuml E2E Agent Data Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam roundcorner 10
+skinparam shadowing false
+
+title E2E Test Agent: Data Flow & Transformations
+
+' Define colors
+!define INPUT_COLOR #E3F2FD
+!define TRANSFORM_COLOR #FFF9C4
+!define OUTPUT_COLOR #C8E6C9
+!define VALIDATE_COLOR #F8BBD0
+
+package "Input Layer" {
+  artifact "test.yaml" as yaml
+  note right of yaml
+    <b>YAML Specification</b>
+    ----
+    paypal-test:
+      url: https://shop.com
+      jobs:
+        - name: user-login
+          prompt: "Login to shop"
+          acceptance:
+            - user is logged in
+  end note
+}
+
+package "Parsing & Validation" {
+  component "YAMLParser" as yamlparser
+  component "SchemaValidator" as validator
+
+  yaml --> yamlparser : Read file
+  yamlparser --> validator : Parse to object
+  validator --> yamlparser : Validate structure
+}
+
+package "Domain Model" {
+  component "TestSpec" as testspec
+  note right of testspec
+    name: "paypal-test"
+    url: "https://shop.com"
+    jobs: JobSpec[]
+  end note
+
+  component "JobSpec" as jobspec
+  note right of jobspec
+    name: "user-login"
+    prompt: "Login to shop"
+    acceptance: [criteria]
+  end note
+
+  yamlparser --> testspec : Create
+  testspec *-- jobspec
+}
+
+package "Browser Context" {
+  component "Playwright" as browser
+  component "HTMLExtractor" as htmlext
+
+  testspec --> browser : Launch & navigate
+  browser --> htmlext : page.content()
+
+  database "Live HTML" as html
+  note right of html
+    <b>Simplified HTML</b>
+    ----
+    <div class="header">
+      <button class="login">Anmelden</button>
+    </div>
+    <!-- Email/password fields hidden -->
+    ----
+    Size: 105,930 chars
+    Cleaned: No <script>, <style>
+  end note
+
+  htmlext --> html : Extract & simplify
+}
+
+package "LLM Context" {
+  component "PromptBuilder" as promptbuilder
+  component "Prompt" as prompt
+
+  note right of prompt
+    <b>System Prompt</b>
+    "You are an expert test engineer..."
+    ----
+    <b>User Prompt</b>
+    Instruction: "Login to shop"
+    HTML: [simplified HTML]
+    History: [conversation]
+    ----
+    <b>Language Context</b>
+    "Website is in German"
+    "Login" = "Anmelden"
+  end note
+
+  jobspec --> promptbuilder : instruction
+  html --> promptbuilder : context
+  promptbuilder --> prompt : Build
+}
+
+package "Decomposition Layer" {
+  together {
+    component "IterativeDecomposition\nEngine (Two-Pass)" as iterengine
+    component "SimpleEOP\nEngine" as eopengine
+  }
+
+  component "LLMProvider" as llm
+  component "LanguageDetector" as langdetect
+
+  prompt --> iterengine : Generate (stale HTML)
+  prompt --> eopengine : Generate (fresh HTML)
+
+  iterengine --> llm : API call
+  eopengine --> llm : API call
+  html --> langdetect : Detect <html lang="de">
+
+  component "LLMResponse" as llmresponse
+  note right of llmresponse
+    content: "click text=Anmelden"
+    model: "gpt-4o"
+    tokens: {prompt: 100, completion: 50}
+  end note
+
+  llm --> llmresponse : Generate
+}
+
+package "Command Processing" {
+  component "OxtestParser" as parser
+  component "OxtestCommand" as command
+
+  note right of command
+    type: "click"
+    selector:
+      strategy: "text"
+      value: "Anmelden"
+    params: {}
+  end note
+
+  llmresponse --> parser : Parse content
+  parser --> command : Create domain object
+}
+
+package "Validation Layer" {
+  component "ValidationEngine" as valengine
+  component "RefinementEngine" as refengine
+
+  command --> valengine : Validate against HTML
+  valengine --> html : Check selector exists
+  valengine --> refengine : Refine if needed
+  refengine --> llm : Request better selector
+  llm --> parser : New command
+}
+
+package "Execution Layer (EOP Only)" {
+  component "CommandExecutor" as executor
+
+  command --> executor : Execute on browser
+  executor --> browser : click/type/navigate
+  browser --> html : **Update page state**
+  html -.-> promptbuilder : Fresh HTML for next iteration
+}
+
+package "Output Generation" {
+  component "OXTestGenerator" as oxgen
+  component "PlaywrightGenerator" as pwgen
+  component "Subtask" as subtask
+
+  note right of subtask
+    id: "subtask-1234"
+    instruction: "Login to shop"
+    commands: [OxtestCommand]
+  end note
+
+  command --> subtask : Collect
+  subtask --> oxgen : Format as DSL
+  subtask --> pwgen : Convert to Playwright
+
+  artifact "test.ox.test" as oxfile
+  note right of oxfile
+    <b>OXTest DSL</b>
+    ----
+    # user-login
+    navigate url=https://shop.com
+    click text=Anmelden
+    type placeholder=E-Mail value=user@test.com
+    type placeholder=Passwort value=useruser
+    click text=Anmelden
+    wait timeout=5000
+  end note
+
+  artifact "test.spec.ts" as pwfile
+  note right of pwfile
+    <b>Playwright Test</b>
+    ----
+    import { test, expect } from '@playwright/test';
+
+    test('user-login', async ({ page }) =>
+      await page.goto('https://shop.com');
+      await page.click('text=Anmelden');
+      await page.fill('[placeholder=E-Mail]',
+        'user@test.com');
+    ...
+  end note
+
+  oxgen --> oxfile : Write
+  pwgen --> pwfile : Write
+}
+
+package "Execution & Reporting" {
+  component "PlaywrightExecutor" as pwexec
+  component "ReportAdapter" as reporter
+
+  oxfile --> pwexec : Execute tests
+  pwexec --> browser : Run commands
+  browser --> pwexec : Results
+
+  component "ExecutionResult" as execresult
+  note right of execresult
+    passed: true
+    failed: 0
+    errors: []
+    duration: 5230ms
+    screenshots: [files]
+  end note
+
+  pwexec --> execresult : Collect results
+
+  artifact "Reports" as reports
+  note right of reports
+    <b>Multiple Formats</b>
+    ----
+    📊 html-report.html
+    📄 results.json
+    🧪 junit.xml
+    📸 screenshots/*.png
+  end note
+
+  execresult --> reporter : Format
+  reporter --> reports : Generate
+}
+
+' Data flow arrows
+yaml -[#blue,bold]-> testspec : <color:blue><b>YAML → Domain Model</b></color>
+testspec -[#green,bold]-> html : <color:green><b>Domain → Browser State</b></color>
+html -[#orange,bold]-> prompt : <color:orange><b>HTML → LLM Context</b></color>
+prompt -[#red,bold]-> command : <color:red><b>LLM → Commands</b></color>
+command -[#purple,bold]-> oxfile : <color:purple><b>Commands → DSL</b></color>
+oxfile -[#brown,bold]-> pwfile : <color:brown><b>DSL → Playwright</b></color>
+pwfile -[#navy,bold]-> reports : <color:navy><b>Execution → Reports</b></color>
+
+legend bottom
+  **Data Transformation Pipeline:**
+
+  1. **YAML** (human-readable specs) → **TestSpec** (typed objects)
+  2. **TestSpec** → **Browser** → **HTML** (page state)
+  3. **HTML** + **Instruction** → **Prompt** (LLM context)
+  4. **Prompt** → **LLM** → **Response** (AI-generated commands)
+  5. **Response** → **Parser** → **OxtestCommand** (domain objects)
+  6. **Commands** → **Validation** → **Refinement** (quality assurance)
+  7. **Commands** → **OXTest DSL** (intermediate format)
+  8. **OXTest** → **Playwright** (.spec.ts files)
+  9. **Playwright** → **Execution** → **Reports** (results)
+
+  **EOP Enhancement:** Steps 6-7 include command execution
+  that refreshes HTML for next iteration (feedback loop).
+end legend
+
+@enduml

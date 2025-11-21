@@ -413,6 +413,19 @@ npm test
 
 This project builds on several key concepts from computer science and AI research:
 
+### LLM Planning Capabilities
+- **Modern Survey of LLM Planners**: Wei, H., Zhang, Z., He, S., Xia, T., Pan, S., & Liu, F. (2025). PlanGenLLMs: A Modern Survey of LLM Planning Capabilities. *arXiv:2502.11221*. [https://arxiv.org/html/2502.11221v1](https://arxiv.org/html/2502.11221v1)
+  - Comprehensive overview of LLM planning with six performance criteria: completeness, executability, optimality, representation, generalization, and efficiency
+  - Examines task decomposition, LLM+classical planner integration, search algorithms, and fine-tuning approaches
+  - Identifies hallucination as a major challenge in planning systems
+- **LLM-Based Autonomous Agents**: [A Survey on Large Language Model based Autonomous Agents](https://spj.science.org/doi/10.34133/icomputing.0124). *Intelligent Computing*, 2024.
+  - Comprehensive survey of LLM-based agent architectures and applications
+
+### Agent Architectures & Best Practices
+- **Autonomous vs Micro-Agents**: Goldfinger, A. (2024). Autonomous Agents vs Micro-Agents. [https://medium.com/@avigoldfinger/autonomous-agents-vs-micro-agents-4890d722f4ee](https://medium.com/@avigoldfinger/autonomous-agents-vs-micro-agents-4890d722f4ee)
+  - Comparison of architectural approaches for agent systems
+  - Trade-offs between autonomy and composability
+
 ### Task Decomposition & Planning
 - **Hierarchical Task Networks (HTN)**: Nau, D., Au, T. C., Ilghami, O., Kuter, U., Murdock, J. W., Wu, D., & Yaman, F. (2003). SHOP2: An HTN planning system. *Journal of Artificial Intelligence Research*, 20, 379-404.
 - **Goal-Oriented Action Planning**: Orkin, J. (2006). Three States and a Plan: The AI of F.E.A.R. *Game Developers Conference*.

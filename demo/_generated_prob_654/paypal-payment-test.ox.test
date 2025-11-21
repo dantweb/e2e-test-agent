@@ -1,0 +1,47 @@
+# paypal-payment-test - Generated from YAML
+
+navigate url=https://osc2.oxid.shop
+
+# Step: user-login
+click text=Anmelden fallback=css=button[data-toggle=dropdown]
+type placeholder=E-Mail-Adresse value=redrobot@dantweb.dev fallback=css=#loginEmail
+type placeholder=Passwort value=useruser
+click text=Anmelden fallback=css=button[type=submit]
+
+# Step: add-products-to-cart
+navigate url=https://osc2.oxid.shop/index.php?cl=alist
+
+# Step: open-cart-and-checkout
+# Error: Could not decompose this step
+# Manual implementation required for: Open the mini basket dropdown, verify the basket menu box is visible, then click the checkout button
+
+# Step: select-paypal-payment
+navigate url=https://osc2.oxid.shop/index.php?cl=payment
+click text=Click here to reload shop.
+navigate url=https://osc2.oxid.shop/warenkorb/
+
+# Step: accept-terms-and-order
+# Error: Could not decompose this step
+# Manual implementation required for: Accept the terms and conditions by clicking the checkbox and click button to place an order - terms and conditions checkbox is checked - order button is clicked - order is submitted
+
+# Step: verify-paypal-iframe
+waitForSelector css=iframe[title=PayPal], iframe[src*=paypal] timeout=10000
+waitForSelector css=iframe[title=PayPal], iframe[src*=paypal] timeout=10000
+waitForSelector xpath=//iframe[@title=PayPal timeout=10000
+waitForSelector xpath=//iframe[@title=PayPal] timeout=10000
+waitForSelector xpath=//iframe[@title=PayPal timeout=10000
+waitForSelector css=iframe[src*=paypal] timeout=10000
+waitForSelector css=iframe[src*=paypal] timeout=10000
+waitForSelector xpath=//iframe[@title=PayPal timeout=10000
+waitForSelector css=iframe[title=PayPal] timeout=10000
+waitForSelector css=iframe[title=PayPal] timeout=10000
+
+# Step: paypal-popup-login
+click text=Mit PayPal bezahlen fallback=xpath=//button[contains(text(),
+waitForSelector css=input[type=email] timeout=10000
+type css=input[type=email] value=paypal-buyer@unzer.com
+type css=input[type=password] value=unzer1234
+click text=Log In fallback=css=button[type=submit]
+
+# Step: verify-order-confirmation
+wait timeout=15000

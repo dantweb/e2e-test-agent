@@ -1,0 +1,272 @@
+@startuml YAML to Playwright Workflow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam roundcorner 10
+skinparam shadowing false
+
+title E2E Test Agent: Complete Workflow\nYAML → OXTest → Playwright
+
+' Define colors
+!define INPUT_COLOR
+!define PROCESS_COLOR
+!define OUTPUT_COLOR
+!define ENGINE_COLOR
+!define VALIDATE_COLOR
+
+actor "Test Engineer" as user #LightBlue
+participant "CLI" as cli
+participant "YAML Parser" as yaml
+participant "LLM Provider" as llm
+
+box "Decomposition Engines"
+  participant "IterativeDecomposition\nEngine\n(Two-Pass)" as iterEngine
+  participant "SimpleEOP\nEngine\n(Execute-Observe-Plan)" as eopEngine
+end box
+
+participant "OXTest\nParser" as parser
+participant "OXTest\nGenerator" as oxgen
+participant "Playwright\nGenerator" as pwgen
+participant "Playwright\nExecutor" as executor
+participant "HTML\nExtractor" as html
+participant "Browser\n(Playwright)" as browser
+
+database ".ox.test\nFile" as oxfile
+database ".spec.ts\nFile" as pwfile
+database "Test\nReports" as reports
+
+== Phase 1: Input Processing ==
+
+user -> cli: ./bin/run.sh tests/paypal.yaml\n--oxtest --execute
+activate cli
+
+cli -> yaml: parseFile(yamlPath)
+activate yaml
+yaml -> yaml: Load YAML content
+yaml -> yaml: Validate schema\n(TestSpec structure)
+yaml --> cli: TestSpec object\n{name, url, jobs[]}
+deactivate yaml
+
+cli -> cli: Load environment (.env)\nValidate API keys
+
+cli -> llm: Initialize provider\n(OpenAI/DeepSeek/Anthropic)
+activate llm
+llm --> cli: ILLMProvider instance
+deactivate llm
+
+== Phase 2: Browser Initialization ==
+
+cli -> browser: chromium.launch({headless: true})
+activate browser
+browser --> cli: Browser instance
+
+cli -> browser: page = newPage()
+cli -> browser: page.goto(baseUrl)
+browser -> browser: Load page
+browser --> cli: Page loaded
+
+cli -> html: new HTMLExtractor(page)
+activate html
+html --> cli: IHTMLExtractor instance
+deactivate html
+
+== Phase 3: Mode Selection ==
+
+alt E2E_USE_EOP=true (EOP Mode)
+  cli -> eopEngine: new SimpleEOPEngine(\n  htmlExtractor,\n  llmProvider,\n  promptBuilder,\n  parser,\n  languageDetector,\n  page,\n  {verbose, model}\n)
+  activate eopEngine
+  note right
+    **EOP Mode**
+    - Execute during generation
+    - Fresh HTML each iteration
+    - Handles dynamic content
+  end note
+else Default (Two-Pass Mode)
+  cli -> iterEngine: new IterativeDecompositionEngine(\n  llmProvider,\n  htmlExtractor,\n  parser,\n  model,\n  verbose\n)
+  activate iterEngine
+  note right
+    **Two-Pass Mode**
+    - Plan first
+    - Generate commands
+    - Validate with stale HTML
+  end note
+end
+
+== Phase 4: Decomposition (Job Processing) ==
+
+loop For each job in YAML
+
+  alt EOP Mode
+    note over cli,eopEngine
+    background
+      **Execute-Observe-Plan Loop**
+    end note
+
+    cli -> eopEngine: decompose(job.prompt)
+
+    loop Until complete (max 10 iterations)
+      eopEngine -> html: extractSimplified()
+      html -> browser: page.content()
+      browser --> html: Full HTML
+      html -> html: Clean & simplify
+      html --> eopEngine: Simplified HTML
+
+      eopEngine -> llm: generate(\n  instruction,\n  CURRENT_HTML,\n  history\n)
+      llm --> eopEngine: OXTest command
+
+      eopEngine -> parser: parseContent(llmResponse)
+      parser --> eopEngine: OxtestCommand
+
+      eopEngine -> browser: **EXECUTE command**\n(click/type/navigate)
+      browser -> browser: Page state changes
+      browser --> eopEngine: Execution result
+
+      note right
+        HTML refreshes on
+        next iteration!
+      end note
+    end
+
+    eopEngine --> cli: Subtask(commands[])
+
+  else Two-Pass Mode
+    note over cli,iterEngine
+    background
+      **Two-Pass Decomposition**
+    end note
+
+    cli -> iterEngine: decompose(job.prompt)
+
+    ' Pass 1: Planning
+    iterEngine -> html: extractSimplified()
+    html -> browser: page.content()
+    browser --> html: HTML (captured once)
+    html --> iterEngine: HTML snapshot
+
+    iterEngine -> llm: generate(\n  planningPrompt,\n  STALE_HTML\n)
+    llm --> iterEngine: Execution plan (steps)
+
+    ' Pass 2: Command Generation
+    loop For each step in plan
+      iterEngine -> llm: generate(\n  step,\n  STALE_HTML\n)
+      llm --> iterEngine: OXTest command
+
+      iterEngine -> parser: parseContent(response)
+      parser --> iterEngine: OxtestCommand
+
+      ' Pass 3: Validation
+      iterEngine -> iterEngine: validateCommand(\n  command,\n  STALE_HTML\n)
+
+      alt Validation fails
+        iterEngine -> llm: refine(\n  command,\n  issues,\n  STALE_HTML\n)
+        llm --> iterEngine: Refined command
+        iterEngine -> iterEngine: Re-validate\      end
+    end
+
+    iterEngine --> cli: Subtask(commands[])
+  end
+
+  deactivate eopEngine
+  deactivate iterEngine
+
+end
+
+== Phase 5: OXTest Generation ==
+
+cli -> oxgen: Generate OXTest DSL
+activate oxgen
+
+loop For each command in subtasks
+  oxgen -> oxgen: Format as OXTest syntax\n(e.g., "click text=Login")
+end
+
+oxgen --> oxfile: Write .ox.test file
+deactivate oxgen
+
+cli -> user: ✅ Generated: test.ox.test
+
+== Phase 6: Playwright Generation (Optional) ==
+
+alt --skip-playwright NOT set
+  cli -> pwgen: Generate Playwright .spec.ts
+  activate pwgen
+
+  pwgen -> parser: Parse .ox.test file
+  parser --> pwgen: OxtestCommand[]
+
+  loop For each OXTest command
+    pwgen -> pwgen: Convert to Playwright syntax\nclick → await page.click()\ntype → await page.fill()
+  end
+
+  pwgen -> pwgen: Wrap in test() blocks
+  pwgen -> pwgen: Add imports & setup
+
+  pwgen --> pwfile: Write .spec.ts file
+  deactivate pwgen
+
+  cli -> user: ✅ Generated: test.spec.ts
+end
+
+== Phase 7: Execution & Validation (Optional) ==
+
+alt --execute flag set
+  cli -> executor: new PlaywrightExecutor(page)
+  activate executor
+
+  executor -> parser: Parse .ox.test file
+  parser --> executor: OxtestCommand[]
+
+  loop For each command
+    executor -> executor: Convert OXTest → Playwright
+    executor -> browser: Execute command\n(click, type, navigate, etc.)
+    browser --> executor: Success/Failure
+
+    alt Execution fails
+      executor -> browser: Take screenshot
+      browser --> executor: screenshot.png
+      executor -> llm: **Self-Healing**\nRefine selector
+      llm --> executor: Better selector
+      executor -> browser: Retry with new selector
+    end
+
+    executor -> executor: Log result
+  end
+
+  executor --> cli: ExecutionResult\n{passed: bool, errors: []}
+  deactivate executor
+
+  alt All tests passed
+    cli -> reports: Generate reports\n(HTML, JSON, JUnit)
+    activate reports
+    reports --> reports: html-report.html
+    reports --> reports: results.json
+    reports --> reports: junit.xml
+    deactivate reports
+
+    cli -> user: ✅ Execution successful\n📊 Reports generated
+  else Tests failed
+    cli -> user: ❌ Execution failed\n🔍 See reports for details
+  end
+end
+
+== Phase 8: Cleanup ==
+
+cli -> browser: Close browser
+deactivate browser
+
+cli -> user: ✅ Complete\n📂 Output: _generated/
+
+deactivate cli
+
+note over user,reports
+  **Workflow Summary:**
+  1. Parse YAML specification
+  2. Launch browser & extract HTML
+  3. Choose decomposition mode (EOP or Two-Pass)
+  4. Generate commands via LLM
+  5. Create .ox.test file (DSL)
+  6. Create .spec.ts file (Playwright)
+  7. Execute tests & validate
+  8. Generate reports
+end note
+
+@enduml

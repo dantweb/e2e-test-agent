@@ -1,0 +1,7 @@
+# login-test - Generated from YAML
+
+navigate url=https://osc2.oxid.shop
+
+# Step: user-login
+# Error: Could not decompose this step
+# Manual implementation required for: Login to the shop with credentials redrobot@dantweb.dev and password useruser

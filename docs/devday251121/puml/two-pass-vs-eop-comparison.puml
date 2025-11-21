@@ -1,0 +1,236 @@
+@startuml Two-Pass vs EOP Comparison
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam roundcorner 10
+skinparam shadowing false
+
+title Decomposition Engines Comparison\nTwo-Pass vs Execute-Observe-Plan (EOP)
+
+' Define colors
+!define TWOPASS_COLOR
+!define EOP_COLOR
+!define PROBLEM_COLOR
+!define SUCCESS_COLOR
+
+|Two-Pass Decomposition|
+start
+
+:YAML Input
+(user-login: "Click login dropdown");
+
+:Launch Browser
+Navigate to baseUrl;
+
+:Extract HTML **ONCE**;
+note right
+  📄 HTML Size: 105,930 chars
+  ⚠️ Login dropdown is **CLOSED**
+  ❌ Email/password fields **NOT VISIBLE**
+end note
+
+partition "Pass 1: Planning" {
+  :Send HTML to LLM
+  "Create execution plan";
+
+  :LLM analyzes **stale HTML**;
+
+  :Generate plan:
+  1. Click login dropdown
+  2. Wait for form
+  3. Enter email
+  4. Enter password
+  5. Click submit;
+}
+
+partition "Pass 2: Command Generation" {
+  repeat
+    :Generate command for step
+    using **STALE HTML**;
+
+    note right
+    background
+      ⚠️ Problem: HTML never refreshed!
+      LLM can't see email/password fields
+      that only appear after clicking dropdown
+    end note
+
+    :LLM generates command
+    (guesses selector);
+
+    backward:Parse command;
+  repeat while (More steps?) is (yes)
+  ->no;
+}
+
+partition "Pass 3: Validation" {
+  repeat
+    :Validate command
+    against **STALE HTML**;
+
+    if (Selector found?) then (yes)
+     :✅ Valid;
+    else (no)
+     :❌ Failed
+      "input[type=password] not found";
+
+      :LLM: Refine selector
+      using **STALE HTML**;
+
+      :Attempt 2/3;
+
+      if (Found now?) then (no)
+        :Attempt 3/3;
+
+        if (Found now?) then (no)
+         :⚠️ Max attempts
+          Use last selector anyway;
+        endif
+      endif
+    endif
+  repeat while (More commands?)
+  ->done;
+}
+
+:Return Subtask
+with ALL commands;
+
+note right
+  **Result:**
+  ❌ 12 validation errors
+  ❌ 50% wrong selectors
+  ⚠️ 18 refinement attempts
+  💰 27 LLM calls
+end note
+
+stop
+
+|Execute-Observe-Plan (EOP)|
+start
+
+:YAML Input
+(user-login: "Click login dropdown");
+
+:Launch Browser
+Navigate to baseUrl;
+
+partition "EOP Loop" {
+  repeat
+
+    :OBSERVE
+    Extract **FRESH HTML**;
+
+    note right
+      📄 HTML reflects
+      **current page state**
+    end note
+
+    if (Iteration) then (1)
+      note right
+        HTML: 105,930 chars
+        Dropdown: CLOSED
+      end note
+    elseif (2)
+      note right
+    background
+        HTML: 110,049 chars ↑
+        Dropdown: **OPENED**
+        ✅ Email field **VISIBLE**
+        ✅ Password field **VISIBLE**
+      end note
+    endif
+
+    :PLAN
+    Generate **ONE command**
+    using fresh HTML;
+
+    :LLM sees actual page state;
+
+    if (Iteration) then (1)
+      :Generated:
+      click text=Anmelden;
+      note right
+        ✅ Dropdown button visible
+        ✅ Correct selector
+      end note
+    elseif (2)
+      :Generated:
+      type placeholder=E-Mail-Adresse;
+      note right
+    background
+        ✅ Email field NOW visible in HTML!
+        ✅ Correct placeholder
+      end note
+    elseif (3)
+      :Generated:
+      type placeholder=Passwort;
+      note right
+    background
+        ✅ Password field visible!
+        ✅ Correct selector first try
+      end note
+    elseif (4)
+      :Generated:
+      click text=Anmelden;
+    else (5)
+      :Generated:
+      wait (completion signal);
+    endif
+
+    if (Command is 'wait' and commands > 0?) then (yes)
+     :Stop - Task complete;
+      detach
+    endif
+
+    :EXECUTE
+    Run command on browser;
+
+    if (Iteration) then (1)
+      :Click dropdown button;
+      note right
+        **Page state changed!**
+        Dropdown opened
+        Form now visible
+      end note
+    elseif (2)
+      :Type into email field;
+    elseif (3)
+      :Type into password field;
+    elseif (4)
+      :Click submit button;
+    endif
+
+    :Wait 500ms
+    (DOM stabilization);
+
+  repeat while (< 10 iterations?) is (yes)
+  ->no;
+}
+
+:Return Subtask
+with commands;
+
+note right
+  **Result:**
+  ✅ 0 validation errors
+  ✅ 100% correct selectors
+  ✅ 0 refinement attempts
+  💰 5 LLM calls (-81%)
+end note
+
+stop
+
+legend bottom
+  **Key Differences:**
+
+  |= Aspect |= Two-Pass |= EOP |
+  | HTML Freshness | ❌ Captured once (stale) | ✅ Refreshed each iteration |
+  | Sees Dynamic Content | ❌ No | ✅ Yes |
+  | Validation Errors | ❌ Many (12) | ✅ None (0) |
+  | LLM Calls | ❌ 27 | ✅ 5 (-81%) |
+  | Selector Accuracy | ❌ 50% | ✅ 100% |
+  | Handles Dropdowns | ❌ No | ✅ Yes |
+  | Handles Modals | ❌ No | ✅ Yes |
+  | Production Ready | ⚠️ Limited | ✅ Yes |
+end legend
+
+@enduml

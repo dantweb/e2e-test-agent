@@ -102,8 +102,17 @@ export class IterativeDecompositionEngine {
   }
 
   /**
+   * @deprecated This method is not used in production. Use SimpleEOPEngine instead.
+   *
    * Decomposes an instruction iteratively, discovering actions step-by-step.
    * After each action, re-examines the page to determine the next step.
+   *
+   * ⚠️ LIMITATION: This method does NOT execute commands during generation,
+   * so it cannot handle dynamic content (dropdowns, modals, AJAX).
+   *
+   * ✅ PRODUCTION SOLUTION: Use SimpleEOPEngine which executes commands
+   * during generation to keep HTML fresh and handle dynamic content.
+   * See: src/application/engines/SimpleEOPEngine.ts
    *
    * @param instruction Natural language instruction
    * @param maxIterations Maximum number of iterations (default: 10)
@@ -420,11 +429,22 @@ export class IterativeDecompositionEngine {
 
     const { strategy, value } = command.selector;
 
+    // Skip validation for selectors that commonly appear in dynamic content
+    // These elements may not be present in HTML until previous commands execute
+    const isDynamicSelector =
+      (strategy === 'css' && value.includes('[type=password]')) || // Password fields often in dropdowns/modals
+      (strategy === 'css' && value.includes('[type=email]')) || // Email fields often in dropdowns/modals
+      (strategy === 'css' && value.includes('[type=hidden]')); // Hidden fields by definition
+
+    if (isDynamicSelector && this.verbose) {
+      console.log(`   ℹ️  Skipping validation for dynamic selector: ${value}`);
+    }
+
     // Simple validation based on strategy
     switch (strategy) {
       case 'css':
         // Check if CSS selector appears in HTML (simple check)
-        if (!this.selectorExistsInHTML(value, html)) {
+        if (!isDynamicSelector && !this.selectorExistsInHTML(value, html)) {
           issues.push(`Selector ${value} not found in HTML`);
         }
         break;

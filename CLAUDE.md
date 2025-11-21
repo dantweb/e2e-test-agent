@@ -1,0 +1,1 @@
+- in /home/dtkachev/osc/strpwt7-oct21/e2e-agent/docs/devday251121/puml viusualise in puml format the current workflow of yaml->ox.test->playwright

@@ -1,0 +1,42 @@
+# paypal-payment-test - Generated from YAML
+
+navigate url=https://osc2.oxid.shop
+
+# Step: user-login
+click css=.showLogin fallback=text=Login
+wait timeout=0
+type placeholder=E-Mail value=redrobot@dantweb.dev fallback=css=input[type=email]
+type css=input[type=password] value=useruser
+click css=.service-menu
+wait timeout=10000
+assertVisible css=.service-menu
+assertUrl pattern=.*startseite.*
+wait timeout=0
+
+# Step: add-products-to-cart
+# Error: Could not decompose this step
+# Manual implementation required for: Add 2 products to the shopping cart.
+
+# Step: open-cart-and-checkout
+# Error: Could not decompose this step
+# Manual implementation required for: Open the mini basket dropdown, verify the basket menu box is visible, then click the checkout button
+
+# Step: select-paypal-payment
+# Error: Could not decompose this step
+# Manual implementation required for: Select PayPal as the payment method
+
+# Step: accept-terms-and-order
+# Error: Could not decompose this step
+# Manual implementation required for: Accept the terms and conditions by clicking the checkbox and click button to place an order - terms and conditions checkbox is checked - order button is clicked - order is submitted
+
+# Step: verify-paypal-iframe
+# Error: Could not decompose this step
+# Manual implementation required for: Wait for the PayPal iframe to appear on the page. Look for iframe[title="PayPal"] or iframe[src*="paypal"]. The PayPal button inside the iframe needs to be clicked manually or by special handling. Wait 10 seconds for the PayPal popup to appear
+
+# Step: paypal-popup-login
+# Error: Could not decompose this step
+# Manual implementation required for: This is a manual step or requires special popup handling. A PayPal popup window should open where you need to login with PayPal credentials paypal-buyer@unzer.com and password unzer1234 then complete the payment.
+
+# Step: verify-order-confirmation
+# Error: Could not decompose this step
+# Manual implementation required for: After PayPal authorization completes and the popup closes, wait for redirect back to the shop. Verify that the thank you page is displayed by checking for
